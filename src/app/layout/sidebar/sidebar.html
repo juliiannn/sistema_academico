@@ -1,0 +1,27 @@
+<aside class="sidebar">
+
+  <div class="brand">
+    <app-logo text="Sistema Académico" />
+  </div>
+
+  @if (groups().length === 0) {
+    <div class="nav-title">Cargando módulos...</div>
+  }
+
+  @for (group of groups(); track group.title) {
+    <div class="nav-title">{{ group.title }}</div>
+
+    @for (item of group.items; track item.key) {
+      <a class="nav-link" [routerLink]="'/' + item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <span>{{ item.icon }}</span>
+        <span class="nav-text">{{ item.label }}</span>
+      </a>
+    }
+  }
+
+  <a class="nav-link" href="#" (click)="logout($event)">
+    <span>🚪</span>
+    <span class="nav-text">Cerrar sesión</span>
+  </a>
+
+</aside>

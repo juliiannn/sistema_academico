@@ -1,0 +1,7 @@
+:host { display: block; }
+.card-sub { border: 1px solid var(--border); border-radius: 12px; padding: 14px; background: var(--surface); }
+header { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.content { white-space: pre-line; margin: 10px 0; padding: 10px; background: var(--bg); border-radius: 8px; }
+.result { border-left: 4px solid var(--success); padding-left: 10px; }
+.result p { margin: 4px 0; }
+.feedback { white-space: pre-line; }

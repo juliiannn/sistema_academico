@@ -1,0 +1,13 @@
+<button
+  class="btn"
+  [type]="type()"
+  [disabled]="disabled()"
+  [class.btn-primary]="variant() === 'primary'"
+  [class.btn-secondary]="variant() === 'secondary'"
+  [class.btn-danger]="variant() === 'danger'"
+  [class.btn-success]="variant() === 'success'"
+  [class.btn-warning]="variant() === 'warning'"
+  [class.btn-block]="block()"
+  [class.btn-sm]="small()"
+  (click)="clicked.emit($event)"
+><ng-content /></button>

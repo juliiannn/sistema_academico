@@ -1,0 +1,2 @@
+:host { display: block; margin-bottom: 12px; }
+.banner { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }

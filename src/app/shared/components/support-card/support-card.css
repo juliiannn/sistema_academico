@@ -1,0 +1,6 @@
+:host { display: block; }
+.support { border: 1px solid var(--border); border-radius: 12px; padding: 16px; background: var(--surface); }
+h3 { margin: 8px 0 4px; }
+.steps { list-style: none; padding: 0; margin: 12px 0 0; display: grid; gap: 10px; }
+.steps li { display: flex; align-items: center; gap: 12px; padding: 8px; border: 1px solid var(--border); border-radius: 10px; }
+.steps img { width: 64px; height: 64px; object-fit: contain; }

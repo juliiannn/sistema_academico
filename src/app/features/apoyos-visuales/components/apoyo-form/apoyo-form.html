@@ -1,0 +1,76 @@
+<form [formGroup]="form()" novalidate (submit)="onSubmit($event)">
+
+  <div class="form-grid">
+
+    <app-form-field label="Tipo de apoyo" [error]="errorOf(field('tipo'))">
+      <select formControlName="tipo">
+        <option value="">Seleccione</option>
+        @for (type of types; track type.value) {
+          <option [value]="type.value">{{ type.label }}</option>
+        }
+      </select>
+    </app-form-field>
+
+    <app-form-field label="Para quién" [error]="null">
+      <select formControlName="estudiante_email">
+        <option value="">Todo el aula (apoyo general)</option>
+        @for (student of students(); track student.value) {
+          <option [value]="student.value">{{ student.label }}</option>
+        }
+      </select>
+    </app-form-field>
+
+    <app-form-field label="Título" [error]="errorOf(field('titulo'))">
+      <input type="text" formControlName="titulo" maxlength="150">
+    </app-form-field>
+
+    <app-form-field label="Descripción (opcional)" [error]="errorOf(field('descripcion'))">
+      <textarea formControlName="descripcion" maxlength="500"></textarea>
+    </app-form-field>
+
+  </div>
+
+  <h3 class="section-title">Pasos ({{ steps().length }} de {{ maxSteps }})</h3>
+
+  <div formArrayName="pasos" class="steps">
+    @for (step of steps(); track step; let i = $index) {
+      <div class="step" [formGroupName]="i">
+
+        <div class="picto">
+          @if (step.get('imagen_url')?.value) {
+            <img [src]="step.get('imagen_url')?.value" [alt]="step.get('palabra')?.value">
+            <app-button variant="secondary" [small]="true" (clicked)="clearPictogram.emit(i)">Quitar</app-button>
+          } @else {
+            <app-button variant="secondary" [small]="true" (clicked)="choosePictogram.emit(i)">+ Pictograma</app-button>
+          }
+        </div>
+
+        <div class="fields">
+          <app-form-field [label]="'Paso ' + (i + 1)" [error]="errorOf(step.get('texto'))">
+            <input type="text" formControlName="texto" maxlength="200" placeholder="Ej: Lavarse las manos">
+          </app-form-field>
+          <app-form-field label="Minutos (opcional)" [error]="errorOf(step.get('duracion_minutos'))">
+            <input type="number" formControlName="duracion_minutos" min="1" max="240">
+          </app-form-field>
+        </div>
+
+        <div class="step-actions">
+          <app-button variant="secondary" [small]="true" [disabled]="i === 0" (clicked)="moveStep.emit({ index: i, direction: -1 })">↑</app-button>
+          <app-button variant="secondary" [small]="true" [disabled]="i === steps().length - 1" (clicked)="moveStep.emit({ index: i, direction: 1 })">↓</app-button>
+          <app-button variant="danger" [small]="true" [disabled]="steps().length === 1" (clicked)="removeStep.emit(i)">Quitar paso</app-button>
+        </div>
+
+      </div>
+    }
+  </div>
+
+  <div class="page-actions">
+    <app-button variant="secondary" [disabled]="!canAdd()" (clicked)="addStep.emit()">+ Agregar paso</app-button>
+  </div>
+
+  <div class="page-actions">
+    <app-button type="submit" [disabled]="saving()">{{ saving() ? 'Guardando...' : 'Guardar apoyo' }}</app-button>
+    <app-button variant="secondary" (clicked)="cancel.emit()">Cancelar</app-button>
+  </div>
+
+</form>

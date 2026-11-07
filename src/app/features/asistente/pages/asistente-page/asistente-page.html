@@ -1,0 +1,57 @@
+<app-card>
+
+  <app-page-header
+    title="Asistente de consultas"
+    subtitle="Pregunta en lenguaje natural sobre los datos de la institución. Solo lectura, y cada consulta queda en la auditoría."
+  >
+    <app-button variant="secondary" (clicked)="toggleSettings()">⚙️ IA local</app-button>
+    @if (hasConversation()) {
+      <app-button variant="secondary" (clicked)="clear()">Limpiar chat</app-button>
+    }
+  </app-page-header>
+
+  <p class="muted">Motor actual: <strong>{{ engine() }}</strong></p>
+
+  @if (showSettings()) {
+    <app-ai-settings
+      [settings]="settings()"
+      [status]="aiStatus()"
+      [statusOk]="aiStatusOk()"
+      [testing]="testing()"
+      (save)="saveSettings($event)"
+      (test)="testConnection($event)"
+    />
+  }
+
+  @if (!allowed) {
+    <app-alert type="error">El asistente es solo para administración, rectoría y coordinación.</app-alert>
+  } @else {
+
+    <div class="chat">
+      @for (message of messages(); track message.id) {
+        <app-chat-bubble
+          [author]="message.author"
+          [text]="message.text"
+          [columns]="message.columns"
+          [rows]="message.rows"
+          [query]="message.query"
+          [isError]="message.isError"
+        />
+      }
+      @if (busy()) {
+        <p class="muted">Consultando...</p>
+      }
+    </div>
+
+    <p class="muted">Prueba con:</p>
+    <app-chip-list [options]="examples" (picked)="ask($event)" />
+
+    <app-chat-composer
+      placeholder="Ej: ¿Qué estudiantes tienen autismo?"
+      [disabled]="busy()"
+      (send)="ask($event)"
+    />
+
+  }
+
+</app-card>

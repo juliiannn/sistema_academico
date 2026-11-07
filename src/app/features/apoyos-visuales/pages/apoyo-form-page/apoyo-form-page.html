@@ -1,0 +1,50 @@
+<app-card>
+
+  <app-page-header
+    [title]="editingId() === null ? 'Nuevo apoyo visual' : 'Editar apoyo visual'"
+    subtitle="Arma los pasos y elige un pictograma de ARASAAC para cada uno."
+  />
+
+  <app-connection-banner [online]="online()" />
+
+  @if (error()) {
+    <app-alert type="error">{{ error() }}</app-alert>
+  }
+
+  @if (!loading()) {
+    <div class="two-columns">
+      <app-apoyo-form
+        [form]="form"
+        [students]="students()"
+        [submitted]="submitted()"
+        [saving]="saving()"
+        (addStep)="addStep()"
+        (removeStep)="removeStep($event)"
+        (moveStep)="moveStep($event)"
+        (choosePictogram)="openPicker($event)"
+        (clearPictogram)="clearPictogram($event)"
+        (save)="save()"
+        (cancel)="cancel()"
+      />
+
+      <div class="preview">
+        <h3 class="section-title">Vista previa</h3>
+        <app-support-card [support]="preview()" />
+      </div>
+    </div>
+  }
+
+</app-card>
+
+@if (pickerIndex() !== null) {
+  <app-modal title="Elegir pictograma" (closed)="pickerIndex.set(null)">
+    <app-pictogram-picker
+      [results]="pictos()"
+      [loading]="pictoLoading()"
+      [error]="pictoError()"
+      [searched]="pictoSearched()"
+      (search)="searchPictograms($event)"
+      (pick)="pickPictogram($event)"
+    />
+  </app-modal>
+}

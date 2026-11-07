@@ -1,0 +1,15 @@
+<div class="app-shell">
+
+  <app-sidebar />
+
+  <main class="main">
+
+    <app-topbar [title]="title()" />
+
+    <section id="pageContent">
+      <router-outlet />
+    </section>
+
+  </main>
+
+</div>

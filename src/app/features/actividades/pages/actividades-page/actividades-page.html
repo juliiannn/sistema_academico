@@ -1,0 +1,16 @@
+@if (isStudent()) {
+
+  <app-student-activities />
+
+} @else {
+
+  <app-crud-manager [config]="config" (rowAction)="onRowAction($event)" />
+
+  @if (selected(); as row) {
+    <app-modal [title]="'Respuestas: ' + row['title']" (closed)="close()">
+      <p class="muted">{{ row['courseName'] }} · {{ row['subjectName'] }} · Entrega: {{ row['dueDate'] }}</p>
+      <app-activity-submissions [assignmentId]="row['id']" [canGrade]="canGrade()" />
+    </app-modal>
+  }
+
+}

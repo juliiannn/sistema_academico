@@ -1,0 +1,9 @@
+.search { display: flex; gap: 8px; margin-bottom: 12px; }
+.search input { flex: 1; }
+.grid-pictos { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 10px; }
+.picto {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface); cursor: pointer; font-size: 12px;
+}
+.picto:hover { border-color: var(--primary); }
+.picto img { width: 72px; height: 72px; object-fit: contain; }

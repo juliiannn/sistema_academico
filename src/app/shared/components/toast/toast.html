@@ -1,0 +1,3 @@
+@if (toast.current(); as t) {
+  <div class="toast-box" [class.toast-error]="t.type === 'error'" role="status">{{ t.message }}</div>
+}

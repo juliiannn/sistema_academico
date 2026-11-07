@@ -1,0 +1,45 @@
+<div [formGroup]="form()" class="form-grid">
+
+  @for (field of fields(); track field.name) {
+
+    <app-form-field [label]="field.label" [error]="errorFor(field.name)">
+
+      @switch (field.type) {
+
+        @case ('select') {
+          <select [formControlName]="field.name">
+            <option value="">Seleccione</option>
+            @for (option of optionsFor(field); track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        }
+
+        @case ('ref') {
+          <select [formControlName]="field.name">
+            <option value="">Seleccione</option>
+            @for (option of optionsFor(field); track option.value) {
+              <option [value]="option.value">{{ option.label }}</option>
+            }
+          </select>
+        }
+
+        @case ('textarea') {
+          <textarea [formControlName]="field.name"></textarea>
+        }
+
+        @default {
+          <input
+            [type]="field.type"
+            [formControlName]="field.name"
+            [attr.step]="field.type === 'number' ? 'any' : null"
+          >
+        }
+
+      }
+
+    </app-form-field>
+
+  }
+
+</div>

@@ -1,0 +1,48 @@
+<app-card>
+
+  <app-page-header
+    title="Apoyos visuales"
+    subtitle="Agendas, rutinas y tareas con pictogramas para estudiantes con discapacidad (API auxiliar)."
+  >
+    @if (canCreate()) {
+      <app-button (clicked)="newSupport()">+ Nuevo apoyo</app-button>
+    }
+  </app-page-header>
+
+  <app-connection-banner [online]="online()" (retry)="load()" />
+
+  <app-select-filter
+    label="Buscar por estudiante"
+    allLabel="Todos los estudiantes"
+    [options]="students()"
+    (changed)="onStudent($event)"
+  />
+
+  <app-chip-list [options]="typeOptions" [selected]="typeFilter()" (picked)="onType($event)" />
+
+  @if (loading()) {
+    <app-loading-state />
+  } @else if (error()) {
+    <app-alert type="error">{{ error() }}</app-alert>
+  } @else {
+    <app-data-table [columns]="columns" [data]="rows()" [actions]="rowActions" (action)="onAction($event)" />
+  }
+
+</app-card>
+
+@if (preview(); as support) {
+  <app-modal [title]="support.titulo" (closed)="preview.set(null)">
+    <app-support-card [support]="support" [audience]="audienceOf(support)" />
+  </app-modal>
+}
+
+@if (toDeactivate(); as support) {
+  <app-confirm-dialog
+    title="Desactivar apoyo"
+    [message]="'¿Seguro que deseas desactivar el apoyo &quot;' + support.titulo + '&quot;?'"
+    confirmText="Desactivar"
+    variant="danger"
+    (confirmed)="confirmDeactivate()"
+    (cancelled)="toDeactivate.set(null)"
+  />
+}

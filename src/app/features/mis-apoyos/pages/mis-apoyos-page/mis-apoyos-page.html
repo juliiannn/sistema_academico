@@ -1,0 +1,19 @@
+<app-card>
+  <app-page-header title="Mis apoyos visuales" subtitle="Tus agendas, rutinas y tareas con pictogramas." />
+
+  <app-connection-banner [online]="online()" (retry)="load()" />
+
+  @if (loading()) {
+    <app-loading-state />
+  } @else if (error()) {
+    <app-alert type="error">{{ error() }}</app-alert>
+  } @else if (supports().length === 0) {
+    <app-empty-state message="Todavía no tienes apoyos visuales." />
+  } @else {
+    <div class="support-grid">
+      @for (support of supports(); track support.id) {
+        <app-support-card [support]="support" [audience]="audience(support)" />
+      }
+    </div>
+  }
+</app-card>

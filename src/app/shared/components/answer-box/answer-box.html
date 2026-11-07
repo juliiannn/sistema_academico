@@ -1,0 +1,18 @@
+<form class="answer" (submit)="submit($event)">
+  <label>
+    <span>{{ label() }}</span>
+    <textarea
+      rows="8"
+      [value]="text()"
+      [maxLength]="maxLength()"
+      placeholder="Escribe aquí tu respuesta..."
+      (input)="onInput($event)"
+    ></textarea>
+  </label>
+  <div class="foot">
+    <span class="muted">{{ text().length }} / {{ maxLength() }} caracteres</span>
+    <app-button type="submit" [disabled]="saving() || text().trim() === ''">
+      {{ saving() ? 'Enviando...' : submitLabel() }}
+    </app-button>
+  </div>
+</form>

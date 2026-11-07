@@ -1,0 +1,43 @@
+<app-card>
+  <app-page-header
+    title="Actividades"
+    subtitle="Pulsa «Responder» en una actividad para escribirle tu respuesta a tu docente. Verás aquí su nota y retroalimentación."
+  />
+
+  @if (error()) {
+    <app-alert type="error">{{ error() }}</app-alert>
+  } @else {
+    <app-data-table [columns]="columns" [data]="rows()" [actions]="rowActions" (action)="onAction($event)" />
+  }
+</app-card>
+
+@if (selected(); as row) {
+  <app-modal [title]="row['title']" (closed)="close()">
+
+    <p class="muted">{{ row['subjectName'] }} · {{ row['courseName'] }} · Entrega: {{ row['dueDate'] }}</p>
+    <p>{{ row['description'] }}</p>
+
+    @if (modalError()) {
+      <app-alert type="error">{{ modalError() }}</app-alert>
+    }
+
+    @if (isGraded(row)) {
+      <app-submission-card [submission]="activeSubmission(row)!" />
+      <p class="muted">Tu docente ya calificó esta respuesta, por eso no se puede modificar.</p>
+    } @else {
+      <app-answer-box
+        [initial]="activeSubmission(row)?.['contenido'] ?? ''"
+        [submitLabel]="activeSubmission(row) ? 'Guardar cambios' : 'Enviar respuesta'"
+        [saving]="saving()"
+        (send)="send($event)"
+      />
+
+      @if (activeSubmission(row)) {
+        <div class="page-actions">
+          <app-button variant="danger" (clicked)="withdraw()">Retirar mi respuesta</app-button>
+        </div>
+      }
+    }
+
+  </app-modal>
+}

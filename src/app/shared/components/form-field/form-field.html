@@ -1,0 +1,7 @@
+<label>
+  <span>{{ label() }}</span>
+  <ng-content />
+  @if (error()) {
+    <span class="field-error">{{ error() }}</span>
+  }
+</label>

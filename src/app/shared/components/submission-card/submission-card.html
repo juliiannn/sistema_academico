@@ -1,0 +1,24 @@
+<article class="card-sub">
+  <header>
+    @if (showStudent()) {
+      <strong>{{ submission()['studentName'] }}</strong>
+    }
+    <span class="badge" [class.success]="isGraded()">{{ isGraded() ? 'Calificada' : 'Pendiente de calificar' }}</span>
+    <span class="muted">{{ when() }}</span>
+  </header>
+
+  <p class="content">{{ submission()['contenido'] }}</p>
+
+  @if (isGraded()) {
+    <div class="result">
+      <p><strong>Nota: {{ submission()['nota'] }}</strong>
+        @if (submission()['calificadoPorNombre']) {
+          <span class="muted"> · por {{ submission()['calificadoPorNombre'] }}</span>
+        }
+      </p>
+      <p class="feedback">{{ submission()['retroalimentacion'] }}</p>
+    </div>
+  }
+
+  <ng-content />
+</article>

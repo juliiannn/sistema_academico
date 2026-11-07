@@ -1,0 +1,17 @@
+<app-card>
+
+  <app-page-header [title]="config().title" [subtitle]="config().description" />
+
+  @if (loading()) {
+    <app-loading-state />
+  } @else if (error()) {
+    <app-alert type="error">{{ error() }}</app-alert>
+  } @else if (config().kind === 'table') {
+    <app-data-table [columns]="columns()" [data]="rows()" />
+  } @else if (details().length > 0) {
+    <app-detail-list [items]="details()" />
+  } @else {
+    <app-empty-state message="No hay información disponible." />
+  }
+
+</app-card>

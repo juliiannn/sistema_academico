@@ -1,0 +1,26 @@
+<p class="summary">{{ guide().summary }}</p>
+
+@if (showAreas()) {
+  <h3 class="section-title">Ajustes razonables del PIAR</h3>
+  <div class="areas">
+    @for (area of guide().areas; track area.area) {
+      <section class="area">
+        <h4>{{ area.area }}</h4>
+        <ul>
+          @for (item of area.items; track item) {
+            <li>{{ item }}</li>
+          }
+        </ul>
+      </section>
+    }
+  </div>
+}
+
+@if (showTips()) {
+  <h3 class="section-title">{{ tipsTitle() }}</h3>
+  <ul class="tips">
+    @for (tip of guide().activityTips; track tip) {
+      <li>{{ tip }}</li>
+    }
+  </ul>
+}

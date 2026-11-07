@@ -1,0 +1,47 @@
+<app-card>
+  <app-page-header title="Mi apoyo" subtitle="Lo que te ayuda a realizar tus actividades.">
+    <app-button (clicked)="goSubmissions()">Ir a Mis entregas</app-button>
+  </app-page-header>
+
+  @if (error()) {
+    <app-alert type="error">{{ error() }}</app-alert>
+  } @else if (piar() === null) {
+    <app-empty-state message="No tienes un PIAR registrado. Si crees que lo necesitas, habla con tu docente o con coordinación." />
+  } @else {
+    <h3 class="section-title">{{ title() }}</h3>
+    <app-disability-guide [guide]="guide()" [showAreas]="false" tipsTitle="Cómo hacer tus actividades" />
+
+    @if (piar()?.['observaciones']) {
+      <p><strong>Ajustes acordados para ti:</strong> {{ piar()?.['observaciones'] }}</p>
+    }
+  }
+</app-card>
+
+@if (piar() !== null) {
+
+  <app-card>
+    <app-page-header title="Actividades por entregar" subtitle="Usa tus apoyos en cada una." />
+    <app-data-table [columns]="columns" [data]="pending()" />
+  </app-card>
+
+  <app-card>
+    <app-page-header title="Mis apoyos visuales" subtitle="Agendas, rutinas y pasos con pictogramas." />
+
+    <app-connection-banner [online]="online()" (retry)="loadSupports()" />
+
+    @if (supportsError() && online() !== false) {
+      <app-alert type="error">{{ supportsError() }}</app-alert>
+    }
+
+    @if (supports().length === 0 && !supportsError()) {
+      <app-empty-state message="Todavía no tienes apoyos visuales." />
+    }
+
+    <div class="support-grid">
+      @for (support of supports(); track support.id) {
+        <app-support-card [support]="support" [audience]="support.general ? 'Todo el aula' : 'Para ti'" />
+      }
+    </div>
+  </app-card>
+
+}

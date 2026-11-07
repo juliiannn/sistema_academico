@@ -1,0 +1,11 @@
+@if (online() === false) {
+  <app-alert type="error">
+    <div class="banner">
+      <span>
+        No hay conexión con la API auxiliar. Enciéndela con <code>npm run dev</code> dentro de la carpeta
+        <code>api_auxiliar</code> (puerto 4000) y vuelve a intentar.
+      </span>
+      <app-button variant="secondary" [small]="true" (clicked)="retry.emit()">Reintentar</app-button>
+    </div>
+  </app-alert>
+}

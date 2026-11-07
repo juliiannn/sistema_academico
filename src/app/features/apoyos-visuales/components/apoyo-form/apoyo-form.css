@@ -1,0 +1,10 @@
+.steps { display: grid; gap: 12px; }
+.step { display: grid; grid-template-columns: 110px 1fr auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--border); border-radius: 12px; }
+.picto { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.picto img { width: 72px; height: 72px; object-fit: contain; }
+.fields { display: grid; grid-template-columns: 1fr 160px; gap: 12px; }
+.step-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 800px) {
+  .step { grid-template-columns: 1fr; }
+  .fields { grid-template-columns: 1fr; }
+}

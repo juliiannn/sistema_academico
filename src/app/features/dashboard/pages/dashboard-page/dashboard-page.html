@@ -1,0 +1,75 @@
+@if (!canSeeStats()) {
+
+  <app-card [title]="'Bienvenido' + (email() ? ', ' + email() : '')">
+    <p class="muted">
+      Este es tu panel de inicio. Desde aquí puedes ir directo a las funciones
+      disponibles para tu rol.
+    </p>
+    <app-detail-list [items]="account()" />
+  </app-card>
+
+} @else {
+
+  @if (error()) {
+    <app-alert type="error">{{ error() }}</app-alert>
+  }
+
+  <div class="grid stats">
+    <app-stat-card label="Estudiantes" [value]="stat('totalStudents')" />
+    <app-stat-card label="Docentes" [value]="stat('totalTeachers')" />
+    <app-stat-card label="Coordinadores" [value]="stat('totalCoordinators')" />
+    <app-stat-card label="Cursos activos" [value]="stat('activeCourses')" />
+    <app-stat-card label="Materias" [value]="stat('totalSubjects')" />
+  </div>
+
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
+
+    <app-card title="Estudiantes por curso">
+      <div class="chart-box">
+        <app-mini-chart type="bar" legend="Estudiantes" [labels]="studentsByCourse().labels" [values]="studentsByCourse().values" />
+      </div>
+    </app-card>
+
+    <app-card title="Promedios por materia">
+      <div class="chart-box">
+        <app-mini-chart type="bar" legend="Promedio" [labels]="averageGrades().labels" [values]="averageGrades().values" />
+      </div>
+    </app-card>
+
+    <app-card title="Asistencia por curso">
+      <div class="chart-box">
+        <app-mini-chart type="line" legend="Asistencia %" [labels]="attendanceRate().labels" [values]="attendanceRate().values" />
+      </div>
+    </app-card>
+
+  </div>
+
+}
+
+@if (announcements().length > 0) {
+  <app-card title="Últimos comunicados">
+    @for (item of announcements(); track item['id']) {
+      <div class="announcement">
+        <strong>{{ item['titulo'] }}</strong>
+        <p>{{ item['contenido'] }}</p>
+        <small class="muted">{{ item['publicadoPorNombre'] }} · {{ when(item['creado']) }}</small>
+      </div>
+    }
+  </app-card>
+}
+
+<!-- Accesos rápidos: las funciones (features) que tiene tu rol -->
+<h2 class="quick-title">Tus funciones</h2>
+
+@if (features().length === 0) {
+  <app-empty-state message="Tu rol todavía no tiene funciones asignadas." />
+} @else {
+  <div class="grid quick-grid">
+    @for (item of features(); track item.key) {
+      <a class="card quick-link" [routerLink]="'/' + item.path">
+        <span class="quick-icon">{{ item.icon }}</span>
+        <strong>{{ item.label }}</strong>
+      </a>
+    }
+  </div>
+}

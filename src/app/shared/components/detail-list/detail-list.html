@@ -1,0 +1,8 @@
+<div class="grid detail-grid">
+  @for (item of items(); track item.label) {
+    <div class="card">
+      <strong>{{ item.label }}</strong>
+      <div>{{ item.value }}</div>
+    </div>
+  }
+</div>

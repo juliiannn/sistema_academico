@@ -1,0 +1,41 @@
+<div class="panel">
+
+  <label class="switch">
+    <input type="checkbox" [checked]="enabled()" (change)="onEnabled($event)">
+    <span>Usar mi IA local (Ollama) en el chat</span>
+  </label>
+
+  <div class="form-grid">
+    <label>
+      <span>Dirección de Ollama</span>
+      <input type="text" [value]="baseUrl()" placeholder="http://localhost:11434" (input)="onText('baseUrl', $event)">
+    </label>
+    <label>
+      <span>Modelo</span>
+      <input type="text" [value]="model()" placeholder="llama3.2" (input)="onText('model', $event)">
+    </label>
+  </div>
+
+  <div class="actions">
+    <app-button (clicked)="submit()">Guardar</app-button>
+    <app-button variant="secondary" [disabled]="testing()" (clicked)="test.emit(baseUrl())">
+      {{ testing() ? 'Probando...' : 'Probar conexión' }}
+    </app-button>
+  </div>
+
+  @if (status()) {
+    <app-alert [type]="statusOk() ? 'success' : 'error'">{{ status() }}</app-alert>
+  }
+
+  <details>
+    <summary>¿Cómo levanto Ollama con Docker?</summary>
+    <pre>docker run -d --name ollama -p 11434:11434 -e OLLAMA_ORIGINS=* -v ollama:/root/.ollama ollama/ollama
+docker exec -it ollama ollama pull llama3.2</pre>
+    <p class="muted">
+      <code>OLLAMA_ORIGINS</code> debe permitir el sitio del frontend (<code>http://localhost:4200</code>); con <code>*</code> permite todos.
+      Si ya tienes tu contenedor, solo pon aquí su dirección y el nombre exacto del modelo (<code>ollama list</code>).
+      Si tu IA usa otro formato de API, se cambia en <code>core/services/ollama.ts</code>.
+    </p>
+  </details>
+
+</div>

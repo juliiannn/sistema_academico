@@ -1,0 +1,27 @@
+<form class="search" (submit)="submit($event)">
+  <input type="text" placeholder="Buscar pictograma (ej: lavarse las manos)" maxlength="50" [value]="term()" (input)="onInput($event)">
+  <app-button type="submit" [disabled]="term().trim().length < 2 || loading()">Buscar</app-button>
+</form>
+
+@if (error()) {
+  <app-alert type="error">{{ error() }}</app-alert>
+}
+
+@if (loading()) {
+  <app-loading-state />
+} @else if (searched() && results().length === 0 && !error()) {
+  <p class="muted">No se encontraron pictogramas para esa búsqueda.</p>
+}
+
+<div class="grid-pictos">
+  @for (item of results(); track item.arasaac_id) {
+    <button type="button" class="picto" (click)="pick.emit(item)">
+      <img [src]="item.imagen_url" [alt]="item.palabra" loading="lazy">
+      <span>{{ item.palabra }}</span>
+    </button>
+  }
+</div>
+
+@if (results().length > 0) {
+  <app-attribution />
+}

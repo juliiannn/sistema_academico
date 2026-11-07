@@ -1,0 +1,66 @@
+<app-card>
+
+  <app-page-header [title]="config().title" [subtitle]="config().description">
+    @if (canCreate()) {
+      <app-button (clicked)="openCreate()">+ Nuevo</app-button>
+    }
+  </app-page-header>
+
+  <!-- Filtro por NOMBRE (antes se buscaba por id) -->
+  @if (config().filter; as filter) {
+    <app-select-filter
+      [label]="filter.label"
+      [options]="filterOptions()"
+      [allLabel]="filter.allLabel"
+      (changed)="onFilter($event)"
+    />
+  }
+
+  @switch (state()) {
+    @case ('loading') {
+      <app-loading-state />
+    }
+    @case ('error') {
+      <app-alert type="error">{{ loadError() }}</app-alert>
+    }
+    @default {
+      <app-data-table
+        [columns]="config().columns"
+        [data]="rows()"
+        [actions]="hasActions() ? rowActions : undefined"
+        (action)="onAction($event)"
+      />
+    }
+  }
+
+</app-card>
+
+<!-- Modal crear / editar -->
+@if (modal(); as m) {
+  <app-modal [title]="m.mode === 'create' ? 'Nuevo registro' : 'Editar registro'" (closed)="closeModal()">
+
+    <form novalidate (submit)="onSubmit($event)">
+
+      <app-entity-form [form]="m.form" [fields]="m.fields" [options]="m.options" [submitted]="submitted()" />
+
+      <div class="page-actions">
+        <app-button type="submit">{{ m.mode === 'create' ? 'Guardar' : 'Guardar cambios' }}</app-button>
+        <app-button variant="secondary" (clicked)="closeModal()">Cancelar</app-button>
+      </div>
+
+    </form>
+
+  </app-modal>
+}
+
+<!-- Confirmación (activar / desactivar / restablecer contraseña) -->
+@if (confirmState(); as c) {
+  <app-confirm-dialog
+    [title]="c.title"
+    [message]="c.message"
+    [confirmText]="c.confirmText"
+    [variant]="c.variant"
+    (confirmed)="runConfirm()"
+    (cancelled)="confirmState.set(null)"
+  />
+}

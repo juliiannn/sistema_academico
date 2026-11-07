@@ -1,0 +1,7 @@
+:host { display: block; }
+.summary { margin: 0 0 8px; }
+.areas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.area { border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; background: var(--surface); }
+.area h4 { margin: 0 0 6px; }
+ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.tips { border-left: 4px solid var(--primary); background: var(--surface); padding: 12px 12px 12px 30px; border-radius: 8px; }

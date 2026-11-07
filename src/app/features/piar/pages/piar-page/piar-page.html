@@ -1,0 +1,4 @@
+<p class="muted">Abre el PIAR de cada discapacidad (ajustes, apoyos y estudiantes):</p>
+<app-chip-list [options]="types" (picked)="openDisability($event)" />
+
+<app-crud-manager [config]="config" (changed)="onChanged($event)" />

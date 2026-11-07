@@ -1,0 +1,12 @@
+<form class="composer" (submit)="submit($event)">
+  <input
+    type="text"
+    [value]="draft()"
+    [placeholder]="placeholder()"
+    [disabled]="disabled()"
+    maxlength="300"
+    autocomplete="off"
+    (input)="onInput($event)"
+  >
+  <app-button type="submit" [disabled]="disabled() || draft().trim() === ''">Enviar</app-button>
+</form>

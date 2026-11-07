@@ -1,0 +1,35 @@
+@if (!valid()) {
+  <app-card>
+    <app-alert type="error">Ese tipo de discapacidad no existe.</app-alert>
+    <app-button variant="secondary" (clicked)="back()">Volver al PIAR</app-button>
+  </app-card>
+} @else {
+
+  <app-card>
+    <app-page-header [title]="'PIAR · ' + title()" subtitle="Guía de ajustes razonables y apoyos para esta discapacidad.">
+      <app-button variant="secondary" (clicked)="back()">Volver al PIAR</app-button>
+    </app-page-header>
+
+    <app-disability-guide [guide]="guide()" />
+  </app-card>
+
+  <app-card>
+    <app-page-header title="Apoyos visuales recomendados" subtitle="Tipos de apoyo que más ayudan a estos estudiantes en sus actividades.">
+      @if (canCreateSupport()) {
+        <app-button (clicked)="newSupport()">+ Crear apoyo visual</app-button>
+      }
+    </app-page-header>
+    <app-chip-list [options]="supportTypes()" />
+  </app-card>
+
+  <app-card>
+    <app-page-header [title]="'Estudiantes con ' + title()" subtitle="Estudiantes con PIAR activo de este tipo." />
+
+    @if (error()) {
+      <app-alert type="error">{{ error() }}</app-alert>
+    } @else {
+      <app-data-table [columns]="columns" [data]="rows()" />
+    }
+  </app-card>
+
+}

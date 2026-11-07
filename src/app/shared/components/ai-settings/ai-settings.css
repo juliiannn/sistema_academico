@@ -1,0 +1,4 @@
+.panel { display: grid; gap: 12px; padding: 14px; border: 1px dashed var(--border); border-radius: 12px; margin-bottom: 12px; }
+.switch { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; }
+pre { background: var(--bg); padding: 10px; border-radius: 8px; overflow-x: auto; font-size: 12px; }

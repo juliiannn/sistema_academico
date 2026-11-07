@@ -1,0 +1,10 @@
+<app-modal [title]="title()" (closed)="cancelled.emit()">
+
+  <p>{{ message() }}</p>
+
+  <div class="page-actions">
+    <app-button [variant]="variant()" (clicked)="confirmed.emit()">{{ confirmText() }}</app-button>
+    <app-button variant="secondary" (clicked)="cancelled.emit()">Cancelar</app-button>
+  </div>
+
+</app-modal>

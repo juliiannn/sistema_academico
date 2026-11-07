@@ -1,0 +1,12 @@
+<header class="topbar">
+  <div>
+    <h1>{{ title() || 'Sistema Académico' }}</h1>
+    <span class="muted">Panel de gestión académica</span>
+  </div>
+
+  <div class="user-chip">
+    {{ auth.email() }}
+    ·
+    <strong>{{ roleLabel() }}</strong>
+  </div>
+</header>

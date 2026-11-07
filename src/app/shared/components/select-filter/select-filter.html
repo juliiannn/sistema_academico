@@ -1,0 +1,11 @@
+<div class="filter-bar">
+  <label>
+    <span>{{ label() }}</span>
+    <select #selector (change)="changed.emit(selector.value)">
+      <option value="">{{ allLabel() }}</option>
+      @for (option of options(); track option.value) {
+        <option [value]="option.value">{{ option.label }}</option>
+      }
+    </select>
+  </label>
+</div>

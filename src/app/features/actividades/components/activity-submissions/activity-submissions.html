@@ -1,0 +1,23 @@
+@if (error()) {
+  <app-alert type="error">{{ error() }}</app-alert>
+} @else if (items().length === 0) {
+  <app-empty-state message="Todavía ningún estudiante ha respondido esta actividad." />
+} @else {
+  <p class="muted">{{ items().length }} respuesta(s) recibida(s).</p>
+
+  <div class="submissions-list">
+    @for (item of items(); track item['id']) {
+      <app-submission-card [submission]="item" [showStudent]="true">
+        @if (canGrade()) {
+          <app-grade-form
+            [grade]="item['nota']"
+            [feedback]="item['retroalimentacion']"
+            [saving]="savingId() === item['id']"
+            [submitLabel]="item['state'] === 'Calificada' ? 'Actualizar nota' : 'Enviar nota y retroalimentación'"
+            (graded)="grade(item, $event)"
+          />
+        }
+      </app-submission-card>
+    }
+  </div>
+}

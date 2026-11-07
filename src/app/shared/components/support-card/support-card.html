@@ -1,0 +1,32 @@
+<article class="support">
+  <header>
+    <span class="badge success">{{ typeLabel(support().tipo) }}</span>
+    <h3>{{ support().titulo }}</h3>
+    @if (audience()) {
+      <p class="muted">Para: {{ audience() }}</p>
+    }
+    @if (support().descripcion) {
+      <p>{{ support().descripcion }}</p>
+    }
+  </header>
+
+  <ol class="steps">
+    @for (step of steps(); track step.orden) {
+      <li>
+        @if (step.pictograma; as picto) {
+          <img [src]="picto.imagen_url" [alt]="picto.palabra">
+        }
+        <div>
+          <strong>{{ step.texto }}</strong>
+          @if (step.duracion_minutos) {
+            <span class="muted"> · {{ step.duracion_minutos }} min</span>
+          }
+        </div>
+      </li>
+    }
+  </ol>
+
+  @if (hasPictograms()) {
+    <app-attribution />
+  }
+</article>

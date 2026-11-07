@@ -1,0 +1,13 @@
+<div class="bubble" [class.user]="author() === 'user'" [class.error]="isError()">
+  <p class="text">{{ text() }}</p>
+
+  @if (columns().length > 0 && rows().length > 0) {
+    <div class="table-wrap">
+      <app-data-table [columns]="columns()" [data]="rows()" [pageSize]="5" />
+    </div>
+  }
+
+  @if (query()) {
+    <p class="query">Consulta ejecutada: {{ query() }}</p>
+  }
+</div>

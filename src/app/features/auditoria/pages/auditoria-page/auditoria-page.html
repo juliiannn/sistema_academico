@@ -1,0 +1,15 @@
+<app-card>
+  <app-page-header title="Auditoría" subtitle="Registro de las acciones sobre PIAR, apoyos visuales y consultas del asistente." />
+
+  <app-connection-banner [online]="online()" (retry)="load()" />
+
+  <app-chip-list [options]="actionOptions" [selected]="action()" (picked)="onAction($event)" />
+
+  @if (loading()) {
+    <app-loading-state />
+  } @else if (error()) {
+    <app-alert type="error">{{ error() }}</app-alert>
+  } @else {
+    <app-data-table [columns]="columns" [data]="logs()" />
+  }
+</app-card>

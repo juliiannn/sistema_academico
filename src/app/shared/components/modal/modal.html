@@ -1,0 +1,13 @@
+<div class="modal open">
+  <div class="modal-card">
+
+    <div class="modal-head">
+      <h2>{{ title() }}</h2>
+
+      <button type="button" class="close" (click)="closed.emit()">✕</button>
+    </div>
+
+    <ng-content />
+
+  </div>
+</div>
