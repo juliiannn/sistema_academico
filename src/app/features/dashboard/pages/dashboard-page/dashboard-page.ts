@@ -18,6 +18,7 @@ import { CHART_COLORS, DashboardChartView } from '../../../../shared/components/
 import { DetailItem, DetailList } from '../../../../shared/components/detail-list/detail-list';
 import { EmptyState } from '../../../../shared/components/empty-state/empty-state';
 import { LoadingState } from '../../../../shared/components/loading-state/loading-state';
+import { GRADE_SCALE, PASSING_LABEL } from '../../../../core/config';
 
 /** Datos del colegio con que se arma el tablero (se piden una vez; los filtros se aplican en el navegador). */
 interface BoardData {
@@ -42,9 +43,9 @@ interface PerformanceLevel {
 }
 
 const LEVELS: PerformanceLevel[] = [
-  { label: 'Superior', min: 9.5, color: '#16a34a' },
-  { label: 'Alto', min: 8, color: '#2563eb' },
-  { label: 'Básico', min: 6, color: '#d97706' },
+  { label: 'Superior', min: GRADE_SCALE.superior, color: '#16a34a' },
+  { label: 'Alto', min: GRADE_SCALE.high, color: '#2563eb' },
+  { label: 'Básico', min: GRADE_SCALE.passing, color: '#d97706' },
   { label: 'Bajo', min: 0, color: '#dc2626' }
 ];
 const PERIODS = Object.keys(ENUM_LABELS['period']) as Period[];
@@ -136,7 +137,7 @@ export class DashboardPage implements OnInit {
   readonly kpis = computed<KpiCard[]>(() => {
     const students = this.enrollments().length;
     const grades = this.grades().map(g => Number(g.value));
-    const atRisk = this.studentAverages().filter(a => a < 6).length;
+    const atRisk = this.studentAverages().filter(a => a < GRADE_SCALE.passing).length;
     const att = this.attendances();
     const attended = att.filter(a => a.status !== 'ABSENT').length;
     const absences = att.length - attended;
@@ -145,7 +146,7 @@ export class DashboardPage implements OnInit {
       { label: 'Estudiantes matriculados', value: String(students), tone: 'blue',
         hint: this.course() ? this.courseName() : `en ${this.data().courses.length} cursos` },
       { label: 'Promedio general', value: grades.length ? round1(average(grades)).toFixed(1) : '—', tone: 'green',
-        hint: `${atRisk} en riesgo (promedio menor a 6)` },
+        hint: `${atRisk} en riesgo (promedio menor a ${PASSING_LABEL})` },
       { label: 'Asistencia', value: att.length ? `${round1((attended / att.length) * 100)}%` : '—', tone: 'amber',
         hint: `${absences} ausencias en ${att.length} registros` },
       { label: 'Estudiantes con PIAR', value: String(piars), tone: 'violet',
@@ -180,7 +181,7 @@ export class DashboardPage implements OnInit {
       .sort((a, b) => a.label.localeCompare(b.label, 'es'));
     return {
       title: 'Promedio por materia', subtitle: 'Escala de 0 a 10', type: 'bar', max: 10,
-      data: { labels: list.map(x => x.label), values: list.map(x => x.value), colors: list.map(x => (x.value < 6 ? '#dc2626' : HIGHLIGHT)) }
+      data: { labels: list.map(x => x.label), values: list.map(x => x.value), colors: list.map(x => (x.value < GRADE_SCALE.passing ? '#dc2626' : HIGHLIGHT)) }
     };
   }
 

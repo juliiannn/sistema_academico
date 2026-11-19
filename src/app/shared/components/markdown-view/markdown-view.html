@@ -1,0 +1,67 @@
+<ng-template #inline let-spans>
+  @for (s of spans; track $index) {
+    @if (s.code) { <code>{{ s.text }}</code> }
+    @else if (s.bold && s.italic) { <strong><em>{{ s.text }}</em></strong> }
+    @else if (s.bold) { <strong>{{ s.text }}</strong> }
+    @else if (s.italic) { <em>{{ s.text }}</em> }
+    @else { {{ s.text }} }
+  }
+</ng-template>
+
+@for (b of blocks(); track $index) {
+  @switch (b.kind) {
+    @case ('heading') {
+      @if (b.level <= 2) {
+        <h3 class="md-h md-h1"><ng-container *ngTemplateOutlet="inline; context: { $implicit: b.spans }" /></h3>
+      } @else {
+        <h4 class="md-h md-h3"><ng-container *ngTemplateOutlet="inline; context: { $implicit: b.spans }" /></h4>
+      }
+    }
+    @case ('paragraph') {
+      <p class="md-p"><ng-container *ngTemplateOutlet="inline; context: { $implicit: b.spans }" /></p>
+    }
+    @case ('rule') { <hr class="md-hr" /> }
+    @case ('list') {
+      @if (b.ordered) {
+        <ol class="md-list">
+          @for (item of b.items; track $index) {
+            <li><ng-container *ngTemplateOutlet="inline; context: { $implicit: item.spans }" /></li>
+          }
+        </ol>
+      } @else {
+        <ul class="md-list" [class.md-checklist]="b.items[0].checked !== null">
+          @for (item of b.items; track $index) {
+            <li>
+              @if (item.checked !== null) {
+                <span class="md-check" [class.done]="item.checked" aria-hidden="true">{{ item.checked ? '☑' : '☐' }}</span>
+              }
+              <ng-container *ngTemplateOutlet="inline; context: { $implicit: item.spans }" />
+            </li>
+          }
+        </ul>
+      }
+    }
+    @case ('table') {
+      <div class="md-table-wrap">
+        <table class="md-table">
+          <thead>
+            <tr>
+              @for (cell of b.header; track $index) {
+                <th><ng-container *ngTemplateOutlet="inline; context: { $implicit: cell }" /></th>
+              }
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of b.rows; track $index) {
+              <tr>
+                @for (cell of row; track $index) {
+                  <td><ng-container *ngTemplateOutlet="inline; context: { $implicit: cell }" /></td>
+                }
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+}

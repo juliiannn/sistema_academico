@@ -2,23 +2,44 @@
 
   <label class="switch">
     <input type="checkbox" [checked]="enabled()" (change)="onEnabled($event)">
-    <span>Usar mi IA local (Ollama) en el chat</span>
+    <span>Generar las respuestas con IA (si se apaga, responde el asistente básico por reglas)</span>
   </label>
 
-  <div class="form-grid">
-    <label>
-      <span>Dirección de Ollama</span>
-      <input type="text" [value]="baseUrl()" placeholder="http://localhost:11434" (input)="onText('baseUrl', $event)">
+  <fieldset class="providers" [disabled]="!enabled()">
+    <legend>¿Qué IA usar?</legend>
+    <label class="provider" [class.selected]="provider() === 'cloud'">
+      <input type="radio" name="ai-provider" value="cloud" [checked]="provider() === 'cloud'" (change)="onProvider('cloud')">
+      <span>
+        <strong>IA en la nube (Groq)</strong>
+        <small>Rápida y funciona también en la versión publicada. La clave está en la API principal (GROQ_API_KEY).
+          Los nombres de estudiantes y docentes se envían como códigos.</small>
+      </span>
     </label>
-    <label>
-      <span>Modelo</span>
-      <input type="text" [value]="model()" placeholder="llama3.2" (input)="onText('model', $event)">
+    <label class="provider" [class.selected]="provider() === 'local'">
+      <input type="radio" name="ai-provider" value="local" [checked]="provider() === 'local'" (change)="onProvider('local')">
+      <span>
+        <strong>IA local (Ollama)</strong>
+        <small>Los datos no salen de este computador. Más lenta en equipos sin tarjeta gráfica.</small>
+      </span>
     </label>
-  </div>
+  </fieldset>
+
+  @if (provider() === 'local') {
+    <div class="form-grid">
+      <label>
+        <span>Dirección de Ollama</span>
+        <input type="text" [value]="baseUrl()" placeholder="http://localhost:11434" (input)="onText('baseUrl', $event)">
+      </label>
+      <label>
+        <span>Modelo</span>
+        <input type="text" [value]="model()" placeholder="qwen3:1.7b" (input)="onText('model', $event)">
+      </label>
+    </div>
+  }
 
   <div class="actions">
     <app-button (clicked)="submit()">Guardar</app-button>
-    <app-button variant="secondary" [disabled]="testing()" (clicked)="test.emit(baseUrl())">
+    <app-button variant="secondary" [disabled]="testing()" (clicked)="test.emit(current())">
       {{ testing() ? 'Probando...' : 'Probar conexión' }}
     </app-button>
   </div>
@@ -27,15 +48,24 @@
     <app-alert [type]="statusOk() ? 'success' : 'error'">{{ status() }}</app-alert>
   }
 
-  <details>
-    <summary>¿Cómo levanto Ollama con Docker?</summary>
-    <pre>docker run -d --name ollama -p 11434:11434 -e OLLAMA_ORIGINS=* -v ollama:/root/.ollama ollama/ollama
-docker exec -it ollama ollama pull llama3.2</pre>
-    <p class="muted">
-      <code>OLLAMA_ORIGINS</code> debe permitir el sitio del frontend (<code>http://localhost:4200</code>); con <code>*</code> permite todos.
-      Si ya tienes tu contenedor, solo pon aquí su dirección y el nombre exacto del modelo (<code>ollama list</code>).
-      Si tu IA usa otro formato de API, se cambia en <code>core/services/ollama.ts</code>.
-    </p>
-  </details>
+  @if (provider() === 'local') {
+    <details>
+      <summary>¿Cómo levanto Ollama?</summary>
+      <pre>ollama pull qwen3:1.7b</pre>
+      <p class="muted">
+        Instala Ollama desde ollama.com (o con Docker: <code>docker run -d --name ollama -p 11434:11434 -v ollama:/root/.ollama ollama/ollama</code>).
+        Pon aquí el nombre exacto del modelo (<code>ollama list</code>). Si usas la versión publicada, la variable
+        <code>OLLAMA_ORIGINS</code> de Ollama debe permitir la dirección del sitio.
+      </p>
+    </details>
+  } @else {
+    <details>
+      <summary>¿Cómo activo la IA en la nube?</summary>
+      <p class="muted">
+        Crea una API key gratuita en console.groq.com y ponla en el <code>.env</code> de la API principal
+        (<code>GROQ_API_KEY=...</code>) y en Render (Environment). Reinicia la API y pulsa «Probar conexión».
+      </p>
+    </details>
+  }
 
 </div>

@@ -1,11 +1,12 @@
 import { Component, input } from '@angular/core';
+import { MarkdownView } from '../markdown-view/markdown-view';
 import { ColumnDef } from '../../../core/models/crud.model';
 import { DataTable } from '../data-table/data-table';
 
 // Burbuja de conversación: texto, y si la respuesta trae datos, una tabla DataTables con la consulta ejecutada
 @Component({
   selector: 'app-chat-bubble',
-  imports: [DataTable],
+  imports: [DataTable, MarkdownView],
   templateUrl: './chat-bubble.html',
   styleUrl: './chat-bubble.css'
 })

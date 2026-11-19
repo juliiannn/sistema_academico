@@ -1,5 +1,9 @@
 <div class="bubble" [class.user]="author() === 'user'" [class.error]="isError()">
-  <p class="text">{{ text() }}</p>
+  @if (author() === 'assistant') {
+    <app-markdown-view class="text-md" [text]="text()" />
+  } @else {
+    <p class="text">{{ text() }}</p>
+  }
 
   @if (columns().length > 0 && rows().length > 0) {
     <div class="table-wrap">

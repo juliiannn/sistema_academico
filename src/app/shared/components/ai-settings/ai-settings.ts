@@ -1,9 +1,9 @@
 import { Component, OnInit, input, output, signal } from '@angular/core';
-import { AiSettings } from '../../../core/services/ai-settings';
+import { AiProvider, AiSettings } from '../../../core/services/ai-settings';
 import { Alert } from '../alert/alert';
 import { Button } from '../button/button';
 
-// Panel para conectar la IA local (Ollama en Docker). Presentacional: emite guardar y probar.
+// Panel de la IA del asistente: en la nube (Groq, vía la API principal) o local (Ollama). Presentacional: emite guardar y probar.
 @Component({
   selector: 'app-ai-settings',
   imports: [Alert, Button],
@@ -18,15 +18,17 @@ export class AiSettingsPanel implements OnInit {
   readonly testing = input(false);
 
   readonly save = output<AiSettings>();
-  readonly test = output<string>();
+  readonly test = output<AiSettings>();
 
   readonly enabled = signal(false);
+  readonly provider = signal<AiProvider>('cloud');
   readonly baseUrl = signal('');
   readonly model = signal('');
 
   ngOnInit(): void {
     const s = this.settings();
     this.enabled.set(s.enabled);
+    this.provider.set(s.provider);
     this.baseUrl.set(s.baseUrl);
     this.model.set(s.model);
   }
@@ -44,7 +46,15 @@ export class AiSettingsPanel implements OnInit {
     this.enabled.set((event.target as HTMLInputElement).checked);
   }
 
+  onProvider(value: AiProvider): void {
+    this.provider.set(value);
+  }
+
+  current(): AiSettings {
+    return { enabled: this.enabled(), provider: this.provider(), baseUrl: this.baseUrl(), model: this.model() };
+  }
+
   submit(): void {
-    this.save.emit({ enabled: this.enabled(), baseUrl: this.baseUrl(), model: this.model() });
+    this.save.emit(this.current());
   }
 }

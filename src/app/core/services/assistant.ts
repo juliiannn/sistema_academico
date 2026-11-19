@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { API_ENDPOINTS } from '../config';
+import { API_ENDPOINTS, GRADE_SCALE, PASSING_LABEL } from '../config';
 import { PermissionsService } from './permissions';
 import { withDisability } from '../utils/piar';
 import { AiSettingsService } from './ai-settings';
@@ -7,6 +7,9 @@ import { AuthService } from './auth';
 import { AuxApiService } from './aux-api';
 import { ApiService } from './api';
 import { ChatTurn, OllamaService } from './ollama';
+import { CloudAiService } from './cloud-ai';
+import { Pseudonymizer } from '../utils/pseudonymizer';
+import { guidesFor } from '../utils/piar-guide';
 import { ColumnDef } from '../models/crud.model';
 import { enumLabel } from '../models/enums';
 import {
@@ -53,8 +56,9 @@ const EMPTY_DATA: AssistantData = {
 
 /** Resumen de datos que se le entrega a la IA local. */
 interface AiContext {
-  context: string;    // texto con las secciones (estudiantes, PIAR, promedios...)
-  records: number;    // cuántos registros resume
+  context: string;         // texto con las secciones (estudiantes, PIAR, promedios...)
+  records: number;         // cuántos registros resume
+  disabilities: string[];  // discapacidades de los estudiantes nombrados (para la guía de ajustes)
 }
 
 /** Fila de la tabla "promedio por materia". */
@@ -63,6 +67,19 @@ interface SubjectAverage {
   average: number;
   count: number;
 }
+
+/** ¿La dirección es este mismo computador? (localhost, 127.x, ::1) */
+function isLocalAddress(url: string): boolean {
+  try {
+    const host = new URL(url).hostname.replace(/^\[|\]$/g, '');
+    return host === 'localhost' || host === '::1' || /^127\./.test(host);
+  } catch {
+    return false;
+  }
+}
+
+// Tope del resumen que se envía a la IA (≈3.000 tokens): rápido incluso en un PC sin tarjeta gráfica
+const MAX_CONTEXT_CHARS = 9000;
 
 const errorText = (e: unknown): string => (e instanceof Error ? e.message : String(e));
 
@@ -85,6 +102,7 @@ export class AssistantService {
   private api = inject(AuxApiService);
   private ai = inject(AiSettingsService);
   private ollama = inject(OllamaService);
+  private cloudAi = inject(CloudAiService);
 
   // Últimos turnos de la conversación con la IA local
   private history: ChatTurn[] = [];
@@ -134,7 +152,8 @@ export class AssistantService {
   /** Motor que responderá la próxima pregunta (para mostrarlo en pantalla). */
   engine(): string {
     const s = this.ai.settings();
-    return s.enabled ? `IA local · ${s.model}` : 'Asistente básico (reglas)';
+    if (!s.enabled) { return 'Asistente básico (reglas)'; }
+    return s.provider === 'cloud' ? 'IA en la nube (Groq)' : `IA local · ${s.model}`;
   }
 
   async ask(question: string): Promise<AssistantReply> {
@@ -149,7 +168,7 @@ export class AssistantService {
     let reply: AssistantReply;
 
     try {
-      reply = this.ai.settings().enabled ? await this.answerWithOllama(text, intent) : await this.answer(intent, text);
+      reply = this.ai.settings().enabled ? await this.answerWithAi(text, intent) : await this.answer(intent, text);
     } catch (error) {
       void this.api.logAudit('READ', 'Asistente IA', `Consulta con error: ${text}`.slice(0, 300));
       throw error;
@@ -159,12 +178,17 @@ export class AssistantService {
     return reply;
   }
 
-  // ---------- IA local (Ollama) ----------
+  // ---------- IA (en la nube con Groq, o local con Ollama) ----------
 
-  // Si la IA local falla, se responde con el asistente básico y se avisa en el mismo mensaje
-  private async answerWithOllama(question: string, intent: Intent): Promise<AssistantReply> {
+  // Si la IA falla, se responde con el asistente básico y se avisa en el mismo mensaje
+  private async answerWithAi(question: string, intent: Intent): Promise<AssistantReply> {
 
-    const { context, records } = this.buildContext();
+    const { context, records, disabilities } = this.buildContext(question);
+    const guides = guidesFor(normalize(question), disabilities);
+    const settings = this.ai.settings();
+    const cloud = settings.provider === 'cloud';
+    // Los nombres viajan como códigos siempre que los datos salgan de este computador
+    const mask = cloud || !isLocalAddress(settings.baseUrl);
 
     // La IA GENERA sus respuestas: analiza, explica, recomienda y redacta textos nuevos.
     // Las cifras y nombres sí deben salir de los datos reales del colegio (para no inventar notas ni estudiantes).
@@ -178,102 +202,205 @@ export class AssistantService {
       'Reglas: cuando hables de datos concretos del colegio (nombres, notas, asistencia, cursos, cantidades) usa SOLO ' +
       'los DATOS de abajo y no inventes cifras ni personas; si un dato no está, dilo. Las recomendaciones, explicaciones ' +
       'y textos redactados sí son tuyos. No digas que guardaste o modificaste información: tú propones y la persona decide. ' +
-      'Escala de notas: 0 a 10 (menos de 6 es desempeño bajo).\n' +
-      `Rol de quien pregunta: ${enumLabel('role', this.auth.role())}.\n\nDATOS DEL COLEGIO:\n${context}`;
+      `Escala de notas: 0 a 10. Nota mínima para aprobar: ${PASSING_LABEL} (menos de eso es desempeño bajo; ` +
+      `Básico desde ${PASSING_LABEL}, Alto desde 8, Superior desde 9,5).\n` +
+      'Cuando propongas apoyos para una discapacidad: adáptalos a ESA discapacidad y a la materia o situación preguntada, ' +
+      'con acciones concretas; no mezcles estrategias propias de otras discapacidades y no repitas los ajustes que el PIAR ya tiene.\n' +
+      (mask ? 'Por privacidad, estudiantes y docentes aparecen con códigos (EST-12, DOC-3). Escribe esos códigos tal cual, ' +
+        'sin inventar nombres: el sistema los reemplaza por el nombre real al mostrar tu respuesta.\n' : '') +
+      `Rol de quien pregunta: ${enumLabel('role', this.auth.role())}.\n` +
+      (guides.length ? `\nGUÍA DE AJUSTES (usa solo la de la discapacidad en cuestión):\n${guides.join('\n')}\n` : '') +
+      `\nDATOS DEL COLEGIO:\n${context}`;
 
     const turns: ChatTurn[] = [{ role: 'system', content: system }, ...this.history.slice(-6), { role: 'user', content: question }];
 
     try {
-      const answer = await this.ollama.chat(turns);
+      let answer: string;
+      let engine = this.engine();
+      // Nombres → códigos antes de salir del navegador; códigos → nombres al recibir la respuesta
+      const masker = mask ? this.pseudonymizer() : null;
+      const outgoing = masker ? turns.map(t => ({ ...t, content: masker.mask(t.content) })) : turns;
+      if (cloud) {
+        const result = await this.cloudAi.chat(outgoing);
+        answer = result.content;
+        engine = `IA en la nube · ${result.model}`;
+      } else {
+        answer = await this.ollama.chat(outgoing);
+      }
+      answer = masker ? masker.unmask(answer) : answer;
       const next: ChatTurn[] = [{ role: 'user', content: question }, { role: 'assistant', content: answer }];
       this.history = [...this.history, ...next].slice(-8);
-      return { text: answer, query: `${this.engine()} · respuesta generada con ${records} registros del colegio` };
+      return { text: answer, query: `${engine} · respuesta generada con ${records} registros del colegio` };
     } catch (error) {
       const fallback = await this.answer(intent, question);
-      return { ...fallback, text: `${fallback.text}\n\n(No pude usar la IA local: ${errorText(error)} Respondí con el asistente básico.)` };
+      const which = cloud ? 'la IA en la nube' : 'la IA local';
+      return { ...fallback, text: `${fallback.text}\n\n(No pude usar ${which}: ${errorText(error)} Respondí con el asistente básico.)` };
     }
   }
 
-  // Resumen de datos para la IA, ya filtrado por el rol. Las notas y la asistencia NO se envían fila por fila
-  // (serían miles): se resumen por estudiante, para que la IA vea a TODO el colegio dentro de su contexto.
-  private buildContext(): AiContext {
+  /** Estudiantes y docentes visibles para el rol → códigos EST-id / DOC-id. */
+  private pseudonymizer(): Pseudonymizer {
+    return new Pseudonymizer([
+      ...this.data.students.map(s => ({ id: Number(s.id), fullName: String(s.fullName ?? ''), kind: 'EST' as const })),
+      ...this.data.teachers.map(t => ({ id: Number(t.id), fullName: String(t.fullName ?? ''), kind: 'DOC' as const }))
+    ]);
+  }
+
+  // Resumen de datos para la IA, ya filtrado por el rol. Solo se envía lo que la pregunta necesita:
+  // un PC sin tarjeta gráfica tarda minutos en leer el colegio completo (≈10.000 tokens), y para redactar un
+  // comunicado no hace falta la lista de 150 estudiantes. Siempre va un resumen general corto.
+  private buildContext(question: string): AiContext {
+    const nq = normalize(question);
     const lines: string[] = [];
-    const add = (title: string, rows: string[], max = 400) => { lines.push(`## ${title} (${rows.length})`, ...rows.slice(0, max)); };
+    const add = (title: string, rows: string[], max = 60) => {
+      if (rows.length) { lines.push(`## ${title} (${rows.length}${rows.length > max ? `, se muestran ${max}` : ''})`, ...rows.slice(0, max)); }
+    };
     const round = (n: number) => Math.round(n * 10) / 10;
+    const avg = (v: number[]) => (v.length ? v.reduce((p, c) => p + c, 0) / v.length : NaN);
+
+    const topic = {
+      writing: /redact|comunicad|carta|mensaje|circular|correo|invitac|plan de clase|idea|propon|explica|ensen|que es |como hago|como puedo/.test(nq),
+      grades: /nota|promedio|rendimiento|desempeno|riesgo|refuerzo|perdi|bajo|mejores|peor|materia|aprob|reprob/.test(nq),
+      attendance: /asistencia|falta|ausen|tarde|inasist|faltan/.test(nq),
+      piar: /piar|discapacidad|tdah|autis|ajuste|inclusi|necesidad|apoyo|dislexia|sindrome/.test(nq),
+      teachers: /docente|profesor|maestr|dicta|ensena/.test(nq),
+      activities: /actividad|tarea|entrega|pendiente|proxim|calificar/.test(nq),
+      courses: /curso|grado|grupo|director|salon/.test(nq)
+    };
+    const anyData = topic.grades || topic.attendance || topic.piar || topic.teachers || topic.activities || topic.courses;
 
     const enrollments = this.data.enrollments;
     const piar = this.data.piars.filter(r => r.estado !== false);
-    const courseOf = (id: unknown) => enrollments.find(e => e.studentId === id && e.status === 'ACTIVE')?.['courseName'] ?? 'sin curso';
-    const piarOf = (id: unknown) => {
-      const r = piar.find(x => x.studentId === id);
-      return r ? `PIAR: ${enumLabel('disability', r.disability)}` : 'sin PIAR';
-    };
+    const courseOf = (id: unknown) => String(enrollments.find(e => e.studentId === id && e.status === 'ACTIVE')?.['courseName'] ?? 'sin curso');
+    const piarIds = new Set(piar.map(r => r.studentId));
 
-    // Notas → promedio por estudiante y materias con promedio bajo
+    // Notas → promedio por estudiante y materias bajas; asistencia → faltas por estudiante
     const grades = this.data.grades;
     const bySubject = new Map<unknown, Map<string, number[]>>();
     grades.forEach(g => {
       const m = bySubject.get(g.studentId) ?? new Map<string, number[]>();
-      const list = m.get(String(g.subjectName)) ?? [];
-      list.push(Number(g.value));
-      m.set(String(g.subjectName), list);
+      m.set(String(g.subjectName), [...(m.get(String(g.subjectName)) ?? []), Number(g.value)]);
       bySubject.set(g.studentId, m);
     });
-    // Asistencia → faltas y llegadas tarde por estudiante
     const absences = new Map<unknown, { abs: number; late: number; total: number }>();
     this.data.attendances.forEach(a => {
       const x = absences.get(a.studentId) ?? { abs: 0, late: 0, total: 0 };
       x.total++;
-      if (a.status === 'ABSENT') x.abs++;
-      if (a.status === 'LATE') x.late++;
+      if (a.status === 'ABSENT') { x.abs++; }
+      if (a.status === 'LATE') { x.late++; }
       absences.set(a.studentId, x);
     });
 
-    const studentLines = this.data.students.map(s => {
+    const summary = this.data.students.map(s => {
       const subj = bySubject.get(s.id);
-      const avgs = subj ? [...subj].map(([name, v]) => [name, v.reduce((p, c) => p + c, 0) / v.length] as [string, number]) : [];
-      const general = avgs.length ? round(avgs.reduce((p, [, v]) => p + v, 0) / avgs.length) : null;
-      const low = avgs.filter(([, v]) => v < 6).map(([n, v]) => `${n} ${round(v)}`);
-      const att = absences.get(s.id);
-      const attText = att ? `${att.abs} faltas, ${att.late} tardes de ${att.total} clases` : 'sin asistencia registrada';
-      const piarText = piarOf(s.id);
-      return `${s.fullName} | ${courseOf(s.id)} | ${general ?? 'sin notas'} | ${low.length ? low.join(', ') : '-'} | ${attText}` +
-        (piarText === 'sin PIAR' ? '' : ` | ${piarText}`);
+      const avgs = subj ? [...subj].map(([name, v]) => [name, avg(v)] as [string, number]) : [];
+      const general = avgs.length ? round(avg(avgs.map(([, v]) => v))) : null;
+      const low = avgs.filter(([, v]) => v < GRADE_SCALE.passing).map(([n, v]) => `${n} ${round(v)}`);
+      const att = absences.get(s.id) ?? { abs: 0, late: 0, total: 0 };
+      const piarRow = piar.find(x => x.studentId === s.id);
+      const line = `${s.fullName} | ${courseOf(s.id)} | ${general ?? 'sin notas'} | ${low.length ? low.join(', ') : '-'} | ` +
+        `${att.total ? `${att.abs} faltas, ${att.late} tardes de ${att.total} clases` : 'sin asistencia'}` +
+        (piarRow ? ` | PIAR: ${enumLabel('disability', piarRow.disability)}` : '');
+      return { s, general, low, att, line, course: courseOf(s.id) };
     });
-    add('Estudiantes (nombre | curso | promedio general | materias con promedio menor a 6 | asistencia | PIAR si tiene)', studentLines);
-    // Lo más importante va primero: si el contexto se recorta, se pierde lo del final
-    add('PIAR activos (estudiante | discapacidad | observaciones)', piar.map(r => `${r.studentName} | ${enumLabel('disability', r.disability)} | ${r.observaciones ?? ''}`));
+    const header = `nombre | curso | promedio | materias con promedio menor a ${PASSING_LABEL} | asistencia | PIAR`;
 
-    // Promedio por curso y materia (para comparar grupos)
-    const csAvg = new Map<string, number[]>();
-    grades.forEach(g => {
-      const key = `${g.courseName ?? ''} | ${g.subjectName}`;
-      csAvg.set(key, [...(csAvg.get(key) ?? []), Number(g.value)]);
+    // 1) Resumen general (siempre, pocas líneas)
+    const allAvg = round(avg(grades.map(g => Number(g.value))));
+    const totalAtt = this.data.attendances.length;
+    const absent = this.data.attendances.filter(a => a.status === 'ABSENT').length;
+    lines.push('## Resumen general',
+      `Estudiantes: ${this.data.students.length} · Docentes: ${this.data.teachers.length} · Cursos: ${this.data.courses.length} · PIAR activos: ${piar.length}`,
+      `Promedio general: ${Number.isNaN(allAvg) ? 'sin notas' : allAvg} · Asistencia: ${totalAtt ? `${round(100 - (absent * 100) / totalAtt)} % (${absent} faltas en ${totalAtt} registros)` : 'sin registros'}`,
+      `Estudiantes con promedio menor a ${PASSING_LABEL}: ${summary.filter(x => x.general !== null && x.general < GRADE_SCALE.passing).length}`);
+
+    // 2) Personas o cursos nombrados en la pregunta → su detalle completo
+    const named = summary.filter(x => {
+      const parts = normalize(x.s.fullName).split(/\s+/).filter(p => p.length > 2);
+      return parts.filter(p => nq.includes(p)).length >= 2;
     });
-    add('Promedio por curso y materia', [...csAvg].map(([k, v]) => `${k} | ${round(v.reduce((p, c) => p + c, 0) / v.length)}`));
-
-    // Docentes con sus materias y cursos (más corto que una fila por asignación)
-    const load = new Map<string, string[]>();
-    this.data.courseSubjects.forEach(c => {
-      const key = String(c.teacherName);
-      load.set(key, [...(load.get(key) ?? []), `${c.subjectName} ${c.courseName}`]);
+    add(`Estudiantes mencionados (${header})`, named.map(x => x.line), 15);
+    const namedDisabilities = named.map(x => piar.find(r => r.studentId === x.s.id)?.disability).filter((d): d is string => !!d);
+    // Si el estudiante nombrado tiene PIAR: su plan actual y sus notas por materia, para que la IA proponga
+    // ajustes nuevos y concretos (y no repita los que ya existen)
+    named.slice(0, 3).forEach(x => {
+      const plan = piar.find(r => r.studentId === x.s.id);
+      const subj = bySubject.get(x.s.id);
+      if (subj) {
+        add(`Notas de ${x.s.fullName} por materia (materia | promedio)`,
+          [...subj].map(([n, v]) => `${n} | ${round(avg(v))}`).sort(), 25);
+      }
+      if (plan) {
+        add(`PIAR de ${x.s.fullName}`, [
+          `Discapacidad principal: ${enumLabel('disability', plan.disability)}`,
+          `Necesidades: ${plan.needs.map(n => n.nombre).join(', ') || 'no registradas'}`,
+          `Observaciones: ${String(plan.observaciones ?? 'sin observaciones').slice(0, 400)}`,
+          ...plan.goals.slice(0, 8).map(g => `Meta${g.subjectName ? ` (${g.subjectName})` : ''}: ${g.descripcion}`),
+          ...plan.adjustments.slice(0, 8).map(j => `Ajuste ${enumLabel('adjustmentType', j.tipo)}${j.subjectName ? ` (${j.subjectName})` : ''}: ${j.descripcion}`)
+        ], 25);
+      }
     });
-    add('Docentes (docente | materias y cursos que dicta)', [...load].map(([t, list]) => `${t} | ${list.join(', ')}`));
-    add('Cursos (curso | director de grupo)', this.data.courses.map(c => `${c.name} | ${c.directorTeacherName ?? 'sin director'}`));
+    const namedCourses = this.data.courses.filter(c => nq.includes(normalize(String(c.name))));
+    namedCourses.forEach(c => add(`Estudiantes de ${c.name} (${header})`,
+      summary.filter(x => x.course === c.name).map(x => x.line), 45));
 
-    const today = new Date().toLocaleDateString('en-CA');
-    add('Actividades próximas (título | curso | materia | fecha de entrega)',
-      this.data.assignments.filter(a => String(a.dueDate) >= today)
-        .sort((x, y) => String(x.dueDate).localeCompare(String(y.dueDate)))
-        .map(a => `${a.title} | ${a.courseName} | ${a.subjectName} | ${a.dueDate}`), 40);
-    const subs = this.data.submissions;
-    if (subs.length) {
-      add('Entregas pendientes de calificar (estudiante | actividad)',
-        subs.filter(e => e.nota === null || e.nota === undefined).map(e => `${e.studentName} | ${e.assignmentTitle}`), 40);
+    // 3) Secciones según el tema. Si la pregunta es sobre estudiantes concretos, basta con su detalle (arriba):
+    //    las listas de todo el colegio solo harían más lenta la respuesta.
+    if (named.length) {
+      const context = lines.join('\n').slice(0, MAX_CONTEXT_CHARS);
+      return { context, records: grades.length + this.data.attendances.length + summary.length, disabilities: namedDisabilities };
+    }
+    if (topic.grades || (!anyData && !topic.writing && !namedCourses.length)) {
+      const risk = summary.filter(x => x.low.length || (x.general !== null && x.general < GRADE_SCALE.passing))
+        .sort((a, b) => (a.general ?? 10) - (b.general ?? 10));
+      add(`Estudiantes con materias o promedio bajo (${header})`, risk.map(x => x.line), 50);
+      const byCourse = new Map<string, number[]>();
+      grades.forEach(g => byCourse.set(String(g.courseName), [...(byCourse.get(String(g.courseName)) ?? []), Number(g.value)]));
+      add('Promedio por curso', [...byCourse].map(([c, v]) => `${c} | ${round(avg(v))}`), 20);
+      const subjects = this.data.subjects.filter(sub => nq.includes(normalize(String(sub.name))));
+      subjects.forEach(sub => {
+        const per = new Map<string, number[]>();
+        grades.filter(g => g.subjectName === sub.name)
+          .forEach(g => per.set(String(g.courseName), [...(per.get(String(g.courseName)) ?? []), Number(g.value)]));
+        add(`Promedio de ${sub.name} por curso`, [...per].map(([c, v]) => `${c} | ${round(avg(v))}`), 20);
+      });
+      if (/mejores|mejor promedio|destac|excelen/.test(nq)) {
+        add(`Mejores promedios (${header})`, [...summary].filter(x => x.general !== null)
+          .sort((a, b) => (b.general ?? 0) - (a.general ?? 0)).map(x => x.line), 15);
+      }
+    }
+    if (topic.attendance) {
+      add(`Estudiantes con más faltas (${header})`, [...summary].filter(x => x.att.abs + x.att.late > 0)
+        .sort((a, b) => b.att.abs - a.att.abs || b.att.late - a.att.late).map(x => x.line), 40);
+    }
+    if (topic.piar) {
+      add('PIAR activos (estudiante | curso | discapacidad | observaciones)',
+        piar.map(r => `${r.studentName} | ${courseOf(r.studentId)} | ${enumLabel('disability', r.disability)} | ${String(r.observaciones ?? '').slice(0, 160)}`), 40);
+      add(`Estudiantes con PIAR: notas y asistencia (${header})`, summary.filter(x => piarIds.has(x.s.id)).map(x => x.line), 40);
+    }
+    if (topic.teachers) {
+      const load = new Map<string, string[]>();
+      this.data.courseSubjects.forEach(c => load.set(String(c.teacherName), [...(load.get(String(c.teacherName)) ?? []), `${c.subjectName} ${c.courseName}`]));
+      add('Docentes (docente | materias y cursos)', [...load].map(([t, list]) => `${t} | ${list.slice(0, 12).join(', ')}${list.length > 12 ? '…' : ''}`), 40);
+    }
+    if (topic.courses || topic.writing) {
+      add('Cursos (curso | director de grupo | estudiantes)', this.data.courses.map(c =>
+        `${c.name} | ${c.directorTeacherName ?? 'sin director'} | ${summary.filter(x => x.course === c.name).length}`), 20);
+    }
+    if (topic.activities || topic.writing) {
+      const today = new Date().toLocaleDateString('en-CA');
+      add('Actividades próximas (título | curso | materia | entrega)',
+        this.data.assignments.filter(a => String(a.dueDate) >= today)
+          .sort((x, y) => String(x.dueDate).localeCompare(String(y.dueDate)))
+          .map(a => `${a.title} | ${a.courseName} | ${a.subjectName} | ${a.dueDate}`), topic.writing ? 10 : 30);
+      if (topic.activities && this.data.submissions.length) {
+        add('Entregas pendientes de calificar (estudiante | actividad)',
+          this.data.submissions.filter(e => e.nota === null || e.nota === undefined).map(e => `${e.studentName} | ${e.assignmentTitle}`), 30);
+      }
     }
 
-    const context = lines.join('\n').slice(0, 30000);
-    return { context, records: grades.length + this.data.attendances.length + studentLines.length };
+    const context = lines.join('\n').slice(0, MAX_CONTEXT_CHARS);
+    return { context, records: grades.length + this.data.attendances.length + summary.length, disabilities: namedDisabilities };
   }
 
   // ---------- acceso a datos (solo GET) ----------

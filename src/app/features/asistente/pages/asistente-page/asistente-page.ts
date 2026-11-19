@@ -3,6 +3,7 @@ import { ColumnDef, Option } from '../../../../core/models/crud.model';
 import { AiSettings, AiSettingsService } from '../../../../core/services/ai-settings';
 import { AssistantService } from '../../../../core/services/assistant';
 import { OllamaService } from '../../../../core/services/ollama';
+import { CloudAiService } from '../../../../core/services/cloud-ai';
 import { errorMessage } from '../../../../core/utils/format';
 import { AiSettingsPanel } from '../../../../shared/components/ai-settings/ai-settings';
 import { Alert } from '../../../../shared/components/alert/alert';
@@ -35,9 +36,15 @@ export class AsistentePage {
   private assistant = inject(AssistantService);
   private aiSettings = inject(AiSettingsService);
   private ollama = inject(OllamaService);
+  private cloudAi = inject(CloudAiService);
 
   readonly settings = this.aiSettings.settings;
-  readonly engine = computed(() => (this.settings().enabled ? `IA local · ${this.settings().model}` : 'Asistente básico (reglas)'));
+  readonly canConfigure = this.aiSettings.canConfigure;
+  readonly engine = computed(() => {
+    const s = this.settings();
+    if (!s.enabled) { return 'Asistente básico (reglas)'; }
+    return s.provider === 'cloud' ? 'IA en la nube (Groq)' : `IA local · ${s.model}`;
+  });
   readonly showSettings = signal(false);
   readonly testing = signal(false);
   readonly aiStatus = signal('');
@@ -90,13 +97,16 @@ export class AsistentePage {
 
   saveSettings(next: AiSettings): void {
     this.aiSettings.update(next);
-    this.aiStatus.set(next.enabled ? 'Guardado. El chat usará tu IA local.' : 'Guardado. El chat usará el asistente básico.');
+    const engine = !next.enabled ? 'el asistente básico' : next.provider === 'cloud' ? 'la IA en la nube (Groq)' : 'tu IA local (Ollama)';
+    this.aiStatus.set(`Guardado. El chat usará ${engine}.`);
     this.aiStatusOk.set(true);
   }
 
-  async testConnection(baseUrl: string): Promise<void> {
+  async testConnection(current: AiSettings): Promise<void> {
     this.testing.set(true);
-    const status = await this.ollama.check(baseUrl.trim().replace(/\/+$/, ''));
+    const status = current.provider === 'cloud'
+      ? await this.cloudAi.check()
+      : await this.ollama.check(current.baseUrl.trim().replace(/\/+$/, ''));
     this.aiStatus.set(status.message);
     this.aiStatusOk.set(status.ok);
     this.testing.set(false);

@@ -4,7 +4,9 @@
     title="Asistente de consultas"
     subtitle="Pregunta o pide recomendaciones sobre los datos que tu rol puede ver. La IA no modifica información y cada consulta queda en la auditoría."
   >
-    <app-button variant="secondary" (clicked)="toggleSettings()">⚙️ IA local</app-button>
+    @if (canConfigure()) {
+      <app-button variant="secondary" (clicked)="toggleSettings()">⚙️ Configurar IA</app-button>
+    }
     @if (hasConversation()) {
       <app-button variant="secondary" (clicked)="clear()">Limpiar chat</app-button>
     }
@@ -12,7 +14,7 @@
 
   <p class="muted">Motor actual: <strong>{{ engine() }}</strong></p>
 
-  @if (showSettings()) {
+  @if (showSettings() && canConfigure()) {
     <app-ai-settings
       [settings]="settings()"
       [status]="aiStatus()"

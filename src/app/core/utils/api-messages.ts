@@ -51,6 +51,17 @@ const MESSAGES: [RegExp, string][] = [
   [/assignments from your own course/i, 'Solo puedes responder actividades de tu curso.'],
   [/You can only (view|modify) your own/i, 'Solo puedes acceder a tu propia información.'],
 
+  // Asistente IA en la nube (Groq)
+  [/Cloud AI is not configured/i, 'La IA en la nube no está configurada en el servidor (falta GROQ_API_KEY).'],
+  [/The Groq API key is invalid/i, 'La clave de Groq (GROQ_API_KEY) no es válida. Revísala en el .env o en Render.'],
+  [/Too many AI questions/i, 'Hiciste muchas preguntas seguidas a la IA. Espera un minuto.'],
+  [/free AI quota is exhausted/i, 'Se agotó por ahora el cupo gratuito de la IA en la nube. Espera un minuto e intenta de nuevo.'],
+  [/The AI model .* is not available in Groq/i, 'El modelo de IA configurado ya no existe en Groq: cambia GROQ_MODEL en el servidor.'],
+  [/too much data for the AI/i, 'La pregunta lleva demasiados datos para la IA; pregunta algo más específico.'],
+  [/Could not reach the cloud AI/i, 'No se pudo conectar con la IA en la nube. Revisa la conexión a internet del servidor.'],
+  [/The cloud AI returned an empty answer/i, 'La IA en la nube no devolvió respuesta. Intenta de nuevo.'],
+  [/Groq answered with error/i, 'La IA en la nube respondió con un error. Intenta de nuevo en un momento.'],
+
   // Chat
   [/You are not part of this conversation/i, 'No participas en esa conversación.'],
   [/The message is empty/i, 'El mensaje está vacío.'],
