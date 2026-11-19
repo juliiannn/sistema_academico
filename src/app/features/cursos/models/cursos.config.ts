@@ -5,6 +5,7 @@ export const CURSOS_CONFIG: EntityConfig = {
   description: 'Grupos de estudiantes por grado, con su aula y su director de curso.',
   module: '/academic/courses',
   endpoint: '/courses',
+  listEndpoint: '/courses?include_inactive=true',
   columns: [
     { key: 'name', label: 'Curso' },
     { key: 'grade', label: 'Grado' },

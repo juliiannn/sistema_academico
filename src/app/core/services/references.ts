@@ -1,7 +1,12 @@
+import { compareLabels } from '../utils/grade-order';
 import { Injectable, inject } from '@angular/core';
 import { API_ENDPOINTS, MAIN_API } from '../config';
 import { Option } from '../models/crud.model';
 import { enumLabel } from '../models/enums';
+import { AppModule, Role } from '../models/admin.model';
+import { Assignment, Course, CourseSubject, Submission, Subject } from '../models/academic.model';
+import { Student, Teacher } from '../models/people.model';
+import { Piar } from '../models/piar.model';
 import { Row } from '../models/row.model';
 import { httpJson } from '../utils/http';
 import { AuthService } from './auth';
@@ -11,8 +16,8 @@ interface Maps {
   teachers: Map<number, string>;
   courses: Map<number, string>;
   subjects: Map<number, string>;
-  courseSubjects: Map<number, Row>;
-  assignments: Map<number, Row>;
+  courseSubjects: Map<number, CourseSubject>;
+  assignments: Map<number, Assignment>;
   loadedAt: number;
   token: string | null;   // la caché es de UNA sesión: al cambiar de usuario se vuelve a pedir
 }
@@ -36,9 +41,9 @@ export class ReferenceService {
 
   // ---------- lectura sin enriquecer (evita ciclos) ----------
 
-  async raw(endpoint: string): Promise<Row[]> {
+  async raw<T>(endpoint: string): Promise<T[]> {
     try {
-      const res = await httpJson(MAIN_API.baseUrl + endpoint, 'GET', undefined, this.auth.token(), MAIN_API.timeoutMs);
+      const res = await httpJson<T[]>(MAIN_API.baseUrl + endpoint, 'GET', undefined, this.auth.token(), MAIN_API.timeoutMs);
       return Array.isArray(res.data) ? res.data : [];
     } catch {
       return [];   // sin permiso o módulo no disponible para este rol: simplemente no hay opciones
@@ -55,22 +60,19 @@ export class ReferenceService {
       const token = this.auth.token();
       this.pending = (async () => {
         const [students, teachers, courses, subjects, courseSubjects, assignmentsAll] = await Promise.all([
-          this.raw('/students'), this.raw('/teachers'), this.raw('/courses'), this.raw('/subjects'), this.raw('/course-subjects'),
-          this.raw('/assignments')
+          this.raw<Student>('/students'), this.raw<Teacher>('/teachers'), this.raw<Course>('/courses'),
+          this.raw<Subject>('/subjects'), this.raw<CourseSubject>('/course-subjects'), this.raw<Assignment>('/assignments')
         ]);
         // El estudiante no lista /assignments: se usa /assignments/me
-        const assignments = assignmentsAll.length ? assignmentsAll : await this.raw('/assignments/me');
-
-        const named = (rows: Row[], field: string) =>
-          new Map<number, string>(rows.map(r => [Number(r['id']), String(r[field] ?? '')]));
+        const assignments = assignmentsAll.length ? assignmentsAll : await this.raw<Assignment>('/assignments/me');
 
         const maps: Maps = {
-          students: named(students, 'fullName'),
-          teachers: named(teachers, 'fullName'),
-          courses: named(courses, 'name'),
-          subjects: named(subjects, 'name'),
-          courseSubjects: new Map(courseSubjects.map(r => [Number(r['id']), r])),
-          assignments: new Map(assignments.map(r => [Number(r['id']), r])),
+          students: new Map(students.map(x => [x.id, x.fullName])),
+          teachers: new Map(teachers.map(x => [x.id, x.fullName])),
+          courses: new Map(courses.map(x => [x.id, x.name])),
+          subjects: new Map(subjects.map(x => [x.id, x.name])),
+          courseSubjects: new Map(courseSubjects.map(x => [x.id, x])),
+          assignments: new Map(assignments.map(x => [x.id, x])),
           loadedAt: Date.now(),
           token
         };
@@ -122,15 +124,15 @@ export class ReferenceService {
     // Respuestas / entregas: el título y la fecha salen de la actividad
     const assignment = r['assignmentId'] != null ? m.assignments.get(Number(r['assignmentId'])) : undefined;
     if (assignment) {
-      fill('assignmentTitle', String(assignment['title'] ?? ''));
-      fill('dueDate', String(assignment['dueDate'] ?? ''));
+      fill('assignmentTitle', assignment.title);
+      fill('dueDate', assignment.dueDate);
     }
 
-    const csId = r['courseSubjectId'] ?? assignment?.['courseSubjectId'];
+    const csId = r['courseSubjectId'] ?? assignment?.courseSubjectId;
     const cs = csId != null ? m.courseSubjects.get(Number(csId)) : undefined;
-    const courseId = r['courseId'] ?? cs?.['courseId'];
-    const subjectId = r['subjectId'] ?? cs?.['subjectId'];
-    const teacherId = r['teacherId'] ?? cs?.['teacherId'];
+    const courseId = r['courseId'] ?? cs?.courseId;
+    const subjectId = r['subjectId'] ?? cs?.subjectId;
+    const teacherId = r['teacherId'] ?? cs?.teacherId;
 
     if (courseId != null) { fill('courseName', m.courses.get(Number(courseId))); }
     if (subjectId != null) { fill('subjectName', m.subjects.get(Number(subjectId))); }
@@ -144,68 +146,70 @@ export class ReferenceService {
 
   async options(ref: string): Promise<Option[]> {
 
-    const sorted = (list: Option[]) => list.sort((x, y) => x.label.localeCompare(y.label, 'es'));
-    const person = (p: Row) => `${p['fullName']} (${p['document']})`;
+    const sorted = (list: Option[]) => list.sort((x, y) => compareLabels(x.label, y.label));
+    const person = (p: Student) => `${p.fullName} (${p.document})`;
 
     if (ref === 'students') {
-      return sorted((await this.raw('/students')).map(s => ({ value: String(s['id']), label: person(s) })));
+      return sorted((await this.raw<Student>('/students')).map(s => ({ value: String(s.id), label: person(s) })));
     }
 
     if (ref === 'studentEmails') {
-      return sorted((await this.raw('/students')).map(s => ({ value: String(s['email']), label: person(s) })));
+      return sorted((await this.raw<Student>('/students')).map(s => ({ value: s.email, label: person(s) })));
     }
 
     if (ref === 'teachers') {
-      return sorted((await this.raw('/teachers')).map(t => ({ value: String(t['id']), label: String(t['fullName']) })));
+      return sorted((await this.raw<Teacher>('/teachers')).map(t => ({ value: String(t.id), label: t.fullName })));
     }
 
     if (ref === 'courses') {
-      return sorted((await this.raw('/courses')).map(c => ({
-        value: String(c['id']),
-        label: c['estado'] === false ? `${c['name']} (inactivo)` : String(c['name'])
+      return sorted((await this.raw<Course>('/courses')).map(c => ({
+        value: String(c.id),
+        label: c.estado === false ? `${c.name} (inactivo)` : c.name
       })));
     }
 
     if (ref === 'subjects') {
-      return sorted((await this.raw('/subjects')).map(s => ({ value: String(s['id']), label: String(s['name']) })));
+      return sorted((await this.raw<Subject>('/subjects')).map(s => ({ value: String(s.id), label: s.name })));
     }
 
     if (ref === 'courseSubjects') {
       // La API ya envía courseName, subjectName y teacherName (el docente solo recibe sus asignaciones)
-      const rows = (await this.raw('/course-subjects')).filter(cs => cs['estado'] !== false);
+      const rows = (await this.raw<CourseSubject>('/course-subjects')).filter(cs => cs.estado !== false);
       return sorted(rows.map(cs => ({
-        value: String(cs['id']),
-        label: `${cs['courseName']} · ${cs['subjectName']} (${cs['teacherName']})`
+        value: String(cs.id),
+        label: `${cs.courseName} · ${cs.subjectName} (${cs.teacherName})`
       })));
     }
 
     // Estudiantes que todavía no tienen un PIAR activo
     if (ref === 'piarStudents') {
-      const [students, piar] = await Promise.all([this.raw('/students'), this.raw(API_ENDPOINTS.piar)]);
-      const taken = new Set(piar.filter(r => r['estado'] !== false).map(r => Number(r['studentId'])));
-      return sorted(students.filter(s => !taken.has(Number(s['id']))).map(s => ({ value: String(s['id']), label: person(s) })));
+      const [students, piar] = await Promise.all([this.raw<Student>('/students'), this.raw<Piar>(API_ENDPOINTS.piar)]);
+      const taken = new Set(piar.filter(r => r.estado !== false).map(r => r.studentId));
+      return sorted(students.filter(s => !taken.has(s.id)).map(s => ({ value: String(s.id), label: person(s) })));
     }
 
     // Actividades a las que el estudiante aún puede responder (sin respuesta activa)
     if (ref === 'myAssignments') {
-      const [assignments, submissions] = await Promise.all([this.raw('/assignments/me'), this.raw(API_ENDPOINTS.mySubmissions)]);
-      const done = new Set(submissions.filter(s => s['estado'] !== false).map(s => Number(s['assignmentId'])));
+      const [assignments, submissions] = await Promise.all([
+        this.raw<Assignment>('/assignments/me'), this.raw<Submission>(API_ENDPOINTS.mySubmissions)
+      ]);
+      const done = new Set(submissions.filter(s => s.estado !== false).map(s => s.assignmentId));
       return sorted(
         assignments
-          .filter(a => !done.has(Number(a['id'])))
-          .map(a => ({ value: String(a['id']), label: `${a['title']} (entrega ${a['dueDate']})` }))
+          .filter(a => !done.has(a.id))
+          .map(a => ({ value: String(a.id), label: `${a.title} (entrega ${a.dueDate})` }))
       );
     }
 
     // Roles y módulos (pantalla Roles y módulos): se ven los nombres
     if (ref === 'roles') {
-      return sorted((await this.raw('/roles')).filter(r => r['estado'] !== false)
-        .map(r => ({ value: String(r['id']), label: enumLabel('role', r['nombre']) })));
+      return sorted((await this.raw<Role>('/roles')).filter(r => r.estado !== false)
+        .map(r => ({ value: String(r.id), label: enumLabel('role', r.nombre) })));
     }
 
     if (ref === 'modules') {
-      return sorted((await this.raw('/modules')).filter(m => m['estado'] !== false)
-        .map(m => ({ value: String(m['id']), label: String(m['nombre']) })));
+      return sorted((await this.raw<AppModule>('/modules')).filter(m => m.estado !== false)
+        .map(m => ({ value: String(m.id), label: m.nombre })));
     }
 
     return [];

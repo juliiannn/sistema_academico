@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { DISABILITY_GUIDES, guideOf } from '../../../../core/models/disability-guide';
 import { ColumnDef, Option } from '../../../../core/models/crud.model';
 import { enumLabel } from '../../../../core/models/enums';
-import { Row } from '../../../../core/models/row.model';
+import { Piar, PiarWithDisability } from '../../../../core/models/piar.model';
 import { PermissionsService } from '../../../../core/services/permissions';
 import { withDisability } from '../../../../core/utils/piar';
 import { API_ENDPOINTS } from '../../../../core/config';
@@ -32,7 +32,7 @@ export class PiarDisabilityPage {
 
   readonly code = signal('');
   readonly error = signal('');
-  readonly rows = signal<Row[]>([]);
+  readonly rows = signal<PiarWithDisability[]>([]);
 
   readonly valid = computed(() => this.code() in DISABILITY_GUIDES);
   readonly title = computed(() => enumLabel('disability', this.code()));
@@ -66,8 +66,8 @@ export class PiarDisabilityPage {
       return;
     }
     try {
-      const data = ((await this.api.get(API_ENDPOINTS.piar)).data ?? []) as Row[];
-      this.rows.set(withDisability(data).filter(r => r['estado'] !== false && r['disability'] === this.code()));
+      const data = (await this.api.get<Piar[]>(API_ENDPOINTS.piar)).data ?? [];
+      this.rows.set(withDisability(data).filter(p => p.estado !== false && p.disability === this.code()));
     } catch (e) {
       this.error.set(errorMessage(e));
     }

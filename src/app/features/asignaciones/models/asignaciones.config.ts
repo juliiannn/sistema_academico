@@ -5,6 +5,7 @@ export const ASIGNACIONES_CONFIG: EntityConfig = {
   description: 'Qué docente dicta qué materia en cada curso.',
   module: '/academic/course-subjects',
   endpoint: '/course-subjects',
+  listEndpoint: '/course-subjects?include_inactive=true',
   columns: [
     { key: 'courseName', label: 'Curso' },
     { key: 'subjectName', label: 'Materia' },
@@ -20,6 +21,7 @@ export const ASIGNACIONES_CONFIG: EntityConfig = {
     idField: 'id',
     statusField: 'estado',
     activeValue: true,
+    activateUrl: id => `/course-subjects/${id}/activate`,
     deactivateUrl: id => `/course-subjects/${id}/deactivate`,
     deactivateLabel: 'Desactivar'
   }

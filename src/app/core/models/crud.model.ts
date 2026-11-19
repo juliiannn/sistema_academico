@@ -63,10 +63,19 @@ export interface EntityConfig {
   columns: ColumnDef[];
   fields: FieldDef[];
   update?: string[];
-  extraActions?: { key: string; label: string; variant: 'primary' | 'secondary' | 'danger' | 'warning' }[];  // botones propios de la pantalla
+  extraActions?: ExtraAction[];  // botones propios de la pantalla
   toggle?: ToggleDef;
   resetPassword?: ResetDef;
   filter?: FilterDef;
+  filters?: ClientFilterDef[];   // filtros encadenados sobre los datos cargados (ej. curso → materia)
+}
+
+// Filtro sobre una columna de la tabla: las opciones salen de los propios datos (ej. courseName, subjectName)
+export interface ClientFilterDef {
+  field: string;
+  label: string;
+  allLabel?: string;
+  enumKey?: string;   // si el valor es un código (ej. period), se muestra su etiqueta
 }
 
 // Configuración de una pantalla personal (Mi perfil, Mis notas, ...)
@@ -76,7 +85,27 @@ export interface SelfViewConfig {
   endpoint: string;
   kind: 'table' | 'detail';
   columns?: ColumnDef[];                       // kind = 'table'
-  details?: { key: string; label: string; enumKey?: string }[];   // kind = 'detail'
+  details?: DetailField[];   // kind = 'detail'
 }
 
 export type { Row };
+
+/** Lo que avisa el administrador CRUD cuando crea, edita o activa/desactiva un registro. */
+export interface CrudChange {
+  action: 'create' | 'update' | 'toggle';
+  label: string;
+}
+
+/** Botón propio de una pantalla CRUD (además de editar y activar/desactivar). */
+export interface ExtraAction {
+  key: string;
+  label: string;
+  variant: 'primary' | 'secondary' | 'danger' | 'warning';
+}
+
+/** Dato de una ficha de solo lectura (Mi perfil). */
+export interface DetailField {
+  key: string;
+  label: string;
+  enumKey?: string;
+}

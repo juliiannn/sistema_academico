@@ -8,11 +8,12 @@ import { Alert } from '../../../../shared/components/alert/alert';
 import { Button } from '../../../../shared/components/button/button';
 import { FormField } from '../../../../shared/components/form-field/form-field';
 import { Logo } from '../../../../shared/components/logo/logo';
+import { PasswordToggle } from '../../../../shared/components/password-toggle/password-toggle';
 
 // Equivale a pages/change-password.html
 @Component({
   selector: 'app-change-password-page',
-  imports: [ReactiveFormsModule, Logo, FormField, Button, Alert],
+  imports: [ReactiveFormsModule, Logo, FormField, Button, Alert, PasswordToggle],
   templateUrl: './change-password-page.html',
   host: { class: 'login-page' }
 })
@@ -30,6 +31,7 @@ export class ChangePasswordPage {
 
   readonly message = signal('');
   readonly isError = signal(false);
+  readonly saving = signal(false);
 
   async save(): Promise<void> {
 
@@ -42,6 +44,11 @@ export class ChangePasswordPage {
 
     const { currentPassword, newPassword } = this.form.getRawValue();
 
+    // Mensaje de espera: la API en la nube puede tardar en responder (por ejemplo, si estaba dormida)
+    this.saving.set(true);
+    this.isError.set(false);
+    this.message.set('Cambiando la contraseña, espera un momento...');
+
     try {
 
       await this.auth.changePassword(currentPassword, newPassword);
@@ -53,6 +60,8 @@ export class ChangePasswordPage {
 
       this.isError.set(true);
       this.message.set(errorMessage(error));
+    } finally {
+      this.saving.set(false);
     }
   }
 }

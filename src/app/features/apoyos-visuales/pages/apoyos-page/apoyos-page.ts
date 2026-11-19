@@ -2,7 +2,7 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { Support } from '../../../../core/models/aux-api.model';
 import { Option } from '../../../../core/models/crud.model';
-import { Row } from '../../../../core/models/row.model';
+import { Row, asEntity } from '../../../../core/models/row.model';
 import { AuxApiService } from '../../../../core/services/aux-api';
 import { ToastService } from '../../../../core/services/toast';
 import { TableAction } from '../../../../core/utils/datatable';
@@ -24,6 +24,12 @@ import { APOYOS_COLUMNS } from '../../models/apoyo.model';
 import { ApoyosService } from '../../services/apoyos';
 
 // Listado de apoyos visuales (API auxiliar). Se filtra por NOMBRE de estudiante y por tipo.
+/** Apoyo visual tal como se muestra en la tabla: con los nombres del estudiante y de quien lo creó. */
+interface SupportRow extends Support {
+  studentName: string;
+  creatorName: string;
+}
+
 @Component({
   selector: 'app-apoyos-page',
   imports: [
@@ -50,7 +56,7 @@ export class ApoyosPage implements OnInit {
   readonly online = this.api.online;
   readonly loading = signal(true);
   readonly error = signal('');
-  readonly rows = signal<Row[]>([]);
+  readonly rows = signal<SupportRow[]>([]);
   readonly typeFilter = signal('');
   readonly studentFilter = signal('');
   readonly preview = signal<Support | null>(null);
@@ -61,7 +67,7 @@ export class ApoyosPage implements OnInit {
   private items: Support[] = [];
 
   readonly rowActions = (row: Row): TableAction[] => {
-    const support = row as Support;
+    const support = asEntity<SupportRow>(row);
     const actions: TableAction[] = [{ key: 'view', label: 'Ver', variant: 'secondary' }];
     if (support.estado && this.apoyos.canModify(support)) {
       actions.push({ key: 'edit', label: 'Editar', variant: 'secondary' });
@@ -117,7 +123,7 @@ export class ApoyosPage implements OnInit {
   }
 
   onAction(event: TableActionEvent): void {
-    const support = this.items.find(s => s.id === event.row['id']);
+    const support = this.items.find(s => s.id === asEntity<SupportRow>(event.row).id);
     if (!support) {
       return;
     }

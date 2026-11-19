@@ -1,3 +1,4 @@
+import { translateMainApiMessage } from './api-messages';
 // Petición HTTP JSON con el formato de respuesta de tu backend: { success, message, data }.
 // Es la misma lógica de errores que tenía assets/js/api.js del proyecto original.
 
@@ -7,19 +8,20 @@ export class HttpError extends Error {
   }
 }
 
-export interface Envelope {
+/** Respuesta cruda del backend (puede venir incompleta si hubo un error). */
+export interface Envelope<T = unknown> {
   success?: boolean;
   message?: string;
-  data?: any;
+  data?: T;
 }
 
-export async function httpJson(
+export async function httpJson<T = unknown>(
   url: string,
   method: string,
   body: unknown,
   token: string | null,
   timeoutMs: number
-): Promise<Envelope> {
+): Promise<Envelope<T>> {
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -43,9 +45,9 @@ export async function httpJson(
     clearTimeout(timer);
   }
 
-  let json: Envelope = {};
+  let json: Envelope<T> = {};
   try {
-    json = (await response.json()) as Envelope;
+    json = (await response.json()) as Envelope<T>;
   } catch {
     json = {};   // la respuesta no trae JSON (por ejemplo 204)
   }
@@ -56,12 +58,14 @@ export async function httpJson(
     if (response.status === 401) {
       const lower = backend.toLowerCase();
       const sessionError = !backend || lower.includes('no autenticado') || lower.includes('token');
-      throw new HttpError(sessionError ? 'No autenticado. Inicia sesión nuevamente.' : backend, 401);
+      throw new HttpError(sessionError ? 'No autenticado. Inicia sesión nuevamente.' : translateMainApiMessage(backend), 401);
     }
     if (response.status === 403) {
-      throw new HttpError('No tienes permisos para realizar esta acción.', 403);
+      // Si la API explica el motivo (p. ej. "solo materias que dictas"), se muestra traducido
+      const generic = !backend || /permisos suficientes|not enough permissions|forbidden/i.test(backend);
+      throw new HttpError(generic ? 'No tienes permisos para realizar esta acción.' : translateMainApiMessage(backend), 403);
     }
-    throw new HttpError(backend || `Error HTTP ${response.status}`, response.status);
+    throw new HttpError(backend ? translateMainApiMessage(backend) : `Error HTTP ${response.status}`, response.status);
   }
 
   return json;

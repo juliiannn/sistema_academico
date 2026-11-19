@@ -14,11 +14,15 @@ export const MATRICULAS_CONFIG: EntityConfig = {
     { name: 'studentId', label: 'Estudiante', type: 'ref', ref: 'students' },
     { name: 'courseId', label: 'Curso', type: 'ref', ref: 'courses' }
   ],
+  filters: [{ field: 'courseName', label: 'Curso', allLabel: 'Todos los cursos' }, { field: 'status', label: 'Estado', allLabel: 'Todos', enumKey: 'status' }],
   toggle: {
     idField: 'id',
     statusField: 'status',
     activeValue: 'ACTIVE',
     deactivateUrl: id => `/enrollments/${id}/cancel`,
-    deactivateLabel: 'Cancelar'
+    deactivateLabel: 'Cancelar matrícula',
+    // Reactivar: solo si el estudiante no tiene otra matrícula vigente (lo valida la API)
+    activateUrl: id => `/enrollments/${id}/reactivate`,
+    activateLabel: 'Reactivar matrícula'
   }
 };

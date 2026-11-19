@@ -1,3 +1,4 @@
+import { CrudChange } from '../../../../core/models/crud.model';
 import { Component, inject } from '@angular/core';
 import { AuxApiService } from '../../../../core/services/aux-api';
 import { CrudManager } from '../../../../shared/components/crud-manager/crud-manager';
@@ -13,7 +14,7 @@ export class ComunicadosPage {
   private aux = inject(AuxApiService);
 
   // Cada publicación queda en la auditoría (API auxiliar)
-  onChanged(event: { action: string; label: string }): void {
+  onChanged(event: CrudChange): void {
     const map: Record<string, string> = { create: 'CREATE', update: 'UPDATE', toggle: 'DELETE' };
     void this.aux.logAudit(map[event.action] ?? 'OTHER', 'Comunicados', event.label);
   }

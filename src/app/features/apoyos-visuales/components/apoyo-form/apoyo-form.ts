@@ -1,3 +1,4 @@
+import { StepMove } from '../../../../core/models/aux-api.model';
 import { Component, computed, input, output } from '@angular/core';
 import { AbstractControl, FormArray, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { Option } from '../../../../core/models/crud.model';
@@ -22,7 +23,7 @@ export class ApoyoForm {
 
   readonly addStep = output<void>();
   readonly removeStep = output<number>();
-  readonly moveStep = output<{ index: number; direction: -1 | 1 }>();
+  readonly moveStep = output<StepMove>();
   readonly choosePictogram = output<number>();
   readonly clearPictogram = output<number>();
   readonly save = output<void>();

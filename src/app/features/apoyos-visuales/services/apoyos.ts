@@ -1,3 +1,4 @@
+import { AnyProfile } from '../../../core/models/people.model';
 import { Injectable, inject } from '@angular/core';
 import { AuthService } from '../../../core/services/auth';
 import { PermissionsService } from '../../../core/services/permissions';
@@ -35,9 +36,11 @@ export class ApoyosService {
 
   /** correo → nombre de estudiantes, docentes, coordinadores y rectores (lo que el rol actual pueda consultar). */
   async directory(): Promise<Map<string, string>> {
-    const lists = await Promise.all(['/students', '/teachers', '/coordinators', '/rectors'].map(e => this.refs.raw(e)));
+    // Solo se piden las listas que el rol puede ver (así no hay respuestas 403 en consola)
+    const others = ['/teachers', '/coordinators', '/rectors'].filter(e => this.permissions.can('/people' + e));
+    const lists = await Promise.all(['/students', ...others].map(e => this.refs.raw<AnyProfile>(e)));
     const names = new Map<string, string>();
-    lists.flat().forEach(p => names.set(String(p['email']).toLowerCase(), String(p['fullName'])));
+    lists.flat().forEach(p => names.set(p.email.toLowerCase(), p.fullName));
     return names;
   }
 

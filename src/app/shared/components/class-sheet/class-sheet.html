@@ -1,0 +1,104 @@
+<app-card>
+
+  <app-page-header [title]="title()" [subtitle]="subtitle()" />
+
+  <!-- Curso → Materia → Periodo / Fecha -->
+  <div class="filters-row">
+    <app-select-filter label="Curso" [options]="courseOptions()" allLabel="Elige un curso"
+                       [value]="courseId()" (changed)="onCourse($event)" />
+    <app-select-filter label="Materia" [options]="subjectOptions()" allLabel="Elige una materia"
+                       [value]="csId()" (changed)="onSubject($event)" />
+    @if (isGrades()) {
+      <app-select-filter label="Periodo" [options]="periodOptions" allLabel="Periodo 1"
+                         [value]="period()" (changed)="onPeriod($event)" />
+    } @else {
+      <div class="filter-bar">
+        <label>
+          <span>Fecha</span>
+          <input type="date" [value]="date()" (change)="onDate($any($event.target).value)">
+        </label>
+      </div>
+    }
+  </div>
+
+  @switch (state()) {
+    @case ('idle') {
+      <app-alert type="info">
+        @if (courseOptions().length === 0) {
+          No tienes cursos asignados.
+        } @else {
+          Elige el curso y la materia para ver la planilla.
+        }
+      </app-alert>
+    }
+    @case ('loading') {
+      <app-loading-state />
+    }
+    @case ('error') {
+      <app-alert type="error">{{ loadError() }}</app-alert>
+    }
+    @default {
+      <div class="sheet-summary">
+        @for (item of summary(); track item.label) {
+          <div class="sheet-stat"><strong>{{ item.value }}</strong><span>{{ item.label }}</span></div>
+        }
+      </div>
+
+      @if (rows().length === 0) {
+        <app-alert type="info">Este curso no tiene estudiantes matriculados.</app-alert>
+      } @else if (editable()) {
+
+        @if (!isGrades()) {
+          <div class="sheet-tools">
+            <span class="muted">Marcar a todos:</span>
+            @for (s of statusOptions; track s.value) {
+              <app-button variant="secondary" [small]="true" (clicked)="markAll(s.value)">{{ s.label }}</app-button>
+            }
+          </div>
+        }
+
+        <div class="sheet" role="list">
+          <div class="sheet-head" aria-hidden="true">
+            <span>Estudiante</span><span>{{ isGrades() ? 'Nota (0,0 a 10,0)' : 'Asistencia' }}</span>
+          </div>
+          @for (r of rows(); track r.studentId; let i = $index) {
+            <div class="sheet-row" role="listitem" [class.changed]="r.value !== r.original">
+              <div class="sheet-name">
+                <strong>{{ r.name }}</strong>
+                <small class="muted">{{ r.document }}</small>
+              </div>
+              @if (isGrades()) {
+                <input class="sheet-grade" type="text" inputmode="decimal" maxlength="4" placeholder="0,0" autocomplete="off"
+                       [value]="r.value" [attr.aria-label]="'Nota de ' + r.name"
+                       [class.invalid]="invalidGrade(r.value)"
+                       [disabled]="r.existingId !== null && !canEditExisting()"
+                       (input)="setValue(i, $any($event.target).value)">
+              } @else {
+                <div class="sheet-status" role="radiogroup" [attr.aria-label]="'Asistencia de ' + r.name">
+                  @for (s of statusOptions; track s.value) {
+                    <button type="button" class="status-btn" [class]="'status-btn s-' + s.value"
+                            [class.on]="r.value === s.value" [attr.aria-pressed]="r.value === s.value"
+                            (click)="setValue(i, s.value)">{{ s.label }}</button>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+
+        <div class="sheet-actions">
+          <span class="muted">
+            @if (dirty()) { Hay cambios sin guardar. } @else { Sin cambios. }
+          </span>
+          <app-button [disabled]="!dirty() || saving()" (clicked)="save()">
+            {{ saving() ? 'Guardando...' : (isGrades() ? 'Guardar notas' : 'Guardar asistencia') }}
+          </app-button>
+        </div>
+
+      } @else {
+        <app-data-table [columns]="viewColumns()" [data]="viewRows()" [pageSize]="25" />
+      }
+    }
+  }
+
+</app-card>

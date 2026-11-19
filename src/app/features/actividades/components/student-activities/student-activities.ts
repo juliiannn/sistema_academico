@@ -1,6 +1,8 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { ColumnDef } from '../../../../core/models/crud.model';
-import { Row } from '../../../../core/models/row.model';
+import { Decimal } from '../../../../core/models/api.model';
+import { Assignment, Submission, SubmissionRequest, SubmissionUpdateRequest } from '../../../../core/models/academic.model';
+import { Row, asEntity } from '../../../../core/models/row.model';
 import { API_ENDPOINTS } from '../../../../core/config';
 import { ApiService } from '../../../../core/services/api';
 import { ToastService } from '../../../../core/services/toast';
@@ -19,6 +21,13 @@ import { SubmissionCard } from '../../../../shared/components/submission-card/su
 const NO_ANSWER = 'Sin responder';
 
 // Actividades del estudiante, cada una con su cuadro de texto para responderle al docente
+/** Actividad del estudiante con su respuesta activa (si la tiene) y el estado para la tabla. */
+interface StudentActivity extends Assignment {
+  submission: Submission | null;
+  state: string;
+  grade: Decimal | '';
+}
+
 @Component({
   selector: 'app-student-activities',
   imports: [Card, PageHeader, Alert, Button, DataTable, Modal, AnswerBox, SubmissionCard],
@@ -29,9 +38,9 @@ export class StudentActivities implements OnInit {
   private api = inject(ApiService);
   private toast = inject(ToastService);
 
-  readonly rows = signal<Row[]>([]);
+  readonly rows = signal<StudentActivity[]>([]);
   readonly error = signal('');
-  readonly selected = signal<Row | null>(null);
+  readonly selected = signal<StudentActivity | null>(null);
   readonly saving = signal(false);
   readonly modalError = signal('');
 
@@ -45,7 +54,7 @@ export class StudentActivities implements OnInit {
   ];
 
   readonly rowActions = (row: Row): TableAction[] => {
-    const state = row['state'];
+    const state = asEntity<StudentActivity>(row).state;
     if (state === 'Calificada') {
       return [{ key: 'open', label: 'Ver nota', variant: 'secondary' }];
     }
@@ -62,19 +71,20 @@ export class StudentActivities implements OnInit {
   // La respuesta activa de cada actividad (si la hay) se une a la fila de la actividad
   async load(): Promise<void> {
     try {
-      const activities = (await this.api.get('/assignments/me')).data as Row[];
-      const submissions = withSubmissionState(((await this.api.get(API_ENDPOINTS.mySubmissions)).data ?? []) as Row[]);
+      const activities = (await this.api.get<Assignment[]>('/assignments/me')).data ?? [];
+      const submissions = withSubmissionState((await this.api.get<Submission[]>(API_ENDPOINTS.mySubmissions)).data ?? []);
 
-      this.rows.set(activities.map(a => {
+      this.rows.set(activities.map<StudentActivity>(a => {
         const mine = submissions
-          .filter(s => s['assignmentId'] === a['id'])
-          .sort((x, y) => Number(y['estado'] !== false) - Number(x['estado'] !== false) || String(y['actualizado']).localeCompare(String(x['actualizado'])))[0];
+          .filter(s => s.assignmentId === a.id)
+          .sort((x, y) => Number(y.estado !== false) - Number(x.estado !== false) || String(y.actualizado).localeCompare(String(x.actualizado)))[0];
+        const active = mine && mine.estado !== false;
 
         return {
           ...a,
           submission: mine ?? null,
-          state: mine && mine['estado'] !== false ? (mine['calificada'] ? 'Calificada' : 'Pendiente de calificar') : NO_ANSWER,
-          grade: mine && mine['estado'] !== false ? mine['nota'] ?? '' : ''
+          state: active ? (mine.calificada ? 'Calificada' : 'Pendiente de calificar') : NO_ANSWER,
+          grade: active ? mine.nota ?? '' : ''
         };
       }));
       this.error.set('');
@@ -85,20 +95,21 @@ export class StudentActivities implements OnInit {
 
   onAction(event: TableActionEvent): void {
     this.modalError.set('');
-    this.selected.set(this.rows().find(r => r['id'] === event.row['id']) ?? null);
+    const id = asEntity<StudentActivity>(event.row).id;
+    this.selected.set(this.rows().find(r => r.id === id) ?? null);
   }
 
   close(): void {
     this.selected.set(null);
   }
 
-  activeSubmission(row: Row): Row | null {
-    const s = row['submission'] as Row | null;
-    return s && s['estado'] !== false ? s : null;
+  activeSubmission(row: StudentActivity): Submission | null {
+    const s = row.submission;
+    return s && s.estado !== false ? s : null;
   }
 
-  isGraded(row: Row): boolean {
-    return row['state'] === 'Calificada';
+  isGraded(row: StudentActivity): boolean {
+    return row.state === 'Calificada';
   }
 
   async send(text: string): Promise<void> {
@@ -113,10 +124,12 @@ export class StudentActivities implements OnInit {
 
     try {
       if (existing) {
-        await this.api.put(`${API_ENDPOINTS.submissions}/${existing['id']}`, { contenido: text });
+        const body: SubmissionUpdateRequest = { contenido: text };
+        await this.api.put(`${API_ENDPOINTS.submissions}/${existing.id}`, body);
         this.toast.show('Respuesta actualizada');
       } else {
-        await this.api.post(API_ENDPOINTS.submissions, { assignmentId: row['id'], contenido: text });
+        const body: SubmissionRequest = { assignmentId: row.id, contenido: text };
+        await this.api.post(API_ENDPOINTS.submissions, body);
         this.toast.show('Respuesta enviada a tu docente');
       }
       this.close();
@@ -129,12 +142,13 @@ export class StudentActivities implements OnInit {
   }
 
   async withdraw(): Promise<void> {
-    const existing = this.selected() ? this.activeSubmission(this.selected() as Row) : null;
+    const selected = this.selected();
+    const existing = selected ? this.activeSubmission(selected) : null;
     if (!existing) {
       return;
     }
     try {
-      await this.api.put(`${API_ENDPOINTS.submissions}/${existing['id']}/deactivate`, {});
+      await this.api.put(`${API_ENDPOINTS.submissions}/${existing.id}/deactivate`, {});
       this.toast.show('Respuesta retirada. Puedes escribir otra.');
       this.close();
       await this.load();

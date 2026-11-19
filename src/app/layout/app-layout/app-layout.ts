@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterOutlet } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter } from 'rxjs';
+import { ChatSocketService } from '../../core/services/chat-socket';
 import { Sidebar } from '../sidebar/sidebar';
 import { Topbar } from '../topbar/topbar';
 
@@ -15,6 +16,8 @@ import { Topbar } from '../topbar/topbar';
 export class AppLayout {
 
   private router = inject(Router);
+  // Crea la conexión del chat al entrar a la zona privada (se conecta sola si el rol tiene el módulo Chat)
+  private chatSocket = inject(ChatSocketService);
 
   readonly title = signal('');
 

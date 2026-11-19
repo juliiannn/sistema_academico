@@ -1,0 +1,167 @@
+<app-card>
+  <app-page-header title="Reportes"
+    subtitle="Genera información consolidada en Excel o PDF según los filtros, o recíbela en tu correo." />
+
+  @if (loading()) {
+    <app-loading-state />
+  } @else if (error()) {
+    <app-alert type="error">{{ error() }}</app-alert>
+  } @else if (!catalog().length) {
+    <p class="empty">No hay reportes disponibles para tu rol.</p>
+  } @else {
+
+    <h3 class="step-title">1. Elige el reporte</h3>
+    <div class="report-types" role="radiogroup" aria-label="Tipo de reporte">
+      @for (item of catalog(); track item.tipo) {
+        <button type="button" class="report-type" role="radio"
+          [class.active]="item.tipo === selectedType()" [attr.aria-checked]="item.tipo === selectedType()"
+          (click)="choose(item.tipo)">
+          <span class="report-icon" aria-hidden="true">{{ icons[item.tipo] ?? '📁' }}</span>
+          <span class="report-name">{{ item.titulo }}</span>
+          <span class="report-desc">{{ item.descripcion }}</span>
+        </button>
+      }
+    </div>
+
+    @if (selected(); as report) {
+      <h3 class="step-title">2. Filtra la información <span class="muted">(opcional)</span></h3>
+      <div class="filters">
+        @if (has('curso')) {
+          <label>
+            <span>Curso</span>
+            <select [value]="form().cursoId" (change)="setField('cursoId', $any($event.target).value)">
+              <option value="">Todos</option>
+              @for (c of courses(); track c.id) {
+                <option [value]="c.id">{{ c.nombre }}</option>
+              }
+            </select>
+          </label>
+        }
+        @if (has('materia')) {
+          <label>
+            <span>Materia</span>
+            <select [value]="form().materiaId" (change)="setField('materiaId', $any($event.target).value)">
+              <option value="">Todas</option>
+              @for (m of options().materias; track m.id) {
+                <option [value]="m.id">{{ m.nombre }}</option>
+              }
+            </select>
+          </label>
+        }
+        @if (has('periodo')) {
+          <label>
+            <span>Periodo</span>
+            <select [value]="form().periodo" (change)="setField('periodo', $any($event.target).value)">
+              <option value="">Todos</option>
+              @for (p of periods; track p.value) {
+                <option [value]="p.value">{{ p.label }}</option>
+              }
+            </select>
+          </label>
+        }
+        @if (has('desde')) {
+          <label>
+            <span>Desde</span>
+            <input type="date" [value]="form().desde" (change)="setField('desde', $any($event.target).value)" />
+          </label>
+        }
+        @if (has('hasta')) {
+          <label>
+            <span>Hasta</span>
+            <input type="date" [value]="form().hasta" (change)="setField('hasta', $any($event.target).value)" />
+          </label>
+        }
+      </div>
+      <button type="button" class="link-button" (click)="clearFilters()">Limpiar filtros</button>
+
+      @if (formError()) {
+        <app-alert type="error">{{ formError() }}</app-alert>
+      }
+
+      <h3 class="step-title">3. Descarga o envía</h3>
+      <div class="output-grid">
+        <div class="output-box">
+          <strong>Descargar ahora</strong>
+          <p class="muted">El archivo se genera con los filtros elegidos y se descarga en tu equipo.</p>
+          <div class="page-actions">
+            <app-button variant="success" [disabled]="!!busy()" (clicked)="download('xlsx')">
+              ⬇ Descargar Excel
+            </app-button>
+            <app-button variant="danger" [disabled]="!!busy()" (clicked)="download('pdf')">
+              ⬇ Descargar PDF
+            </app-button>
+          </div>
+        </div>
+
+        <div class="output-box">
+          <strong>Enviar a mi correo</strong>
+          <p class="muted">Se envía como adjunto a <b>{{ userEmail() }}</b>.</p>
+          <div class="format-checks">
+            <label class="check">
+              <input type="checkbox" [checked]="emailFormats().xlsx" (change)="toggleFormat('xlsx', $any($event.target).checked)" />
+              Excel
+            </label>
+            <label class="check">
+              <input type="checkbox" [checked]="emailFormats().pdf" (change)="toggleFormat('pdf', $any($event.target).checked)" />
+              PDF
+            </label>
+          </div>
+          <app-button [disabled]="!!busy()" (clicked)="sendEmail()">✉ Enviar a mi correo</app-button>
+        </div>
+      </div>
+
+      @if (busy()) {
+        <p class="busy" role="status">⏳ {{ busyMessage() }}</p>
+      }
+
+      @if (emailResult(); as r) {
+        @if (r.estado === 'ENVIADO') {
+          <app-alert type="success">
+            Listo: enviamos «{{ report.titulo }}» a {{ r.destinatario }}
+            @if (r.enviadoA && r.enviadoA !== r.destinatario) { (modo de prueba: llegó a {{ r.enviadoA }}) }
+            con {{ r.archivos.length }} archivo(s) adjunto(s).
+          </app-alert>
+        } @else if (r.estado === 'OMITIDO') {
+          <app-alert type="info">
+            El reporte se generó, pero no se envió: {{ r.error }} Puedes descargarlo desde «Mis reportes recientes».
+          </app-alert>
+        } @else {
+          <app-alert type="error">
+            No se pudo enviar el correo ({{ r.error }}). El reporte quedó en «Mis reportes recientes» para descargarlo.
+          </app-alert>
+        }
+      }
+    }
+
+    <h3 class="step-title">Mis reportes recientes</h3>
+    <p class="muted small">Los archivos se guardan temporalmente en el servidor y luego se eliminan.</p>
+    @if (!files().length) {
+      <p class="empty">Aún no has generado reportes.</p>
+    } @else {
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Reporte</th><th>Formato</th><th>Filtros</th><th>Registros</th><th>Generado</th>
+              <th>Disponible hasta</th><th>Enviado a</th><th></th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (f of files(); track f.id) {
+              <tr>
+                <td>{{ f.titulo }}</td>
+                <td><span class="badge" [class.success]="f.formato === 'xlsx'" [class.danger]="f.formato === 'pdf'">{{ formatLabel(f.formato) }}</span></td>
+                <td class="muted">{{ f.filtros }}</td>
+                <td>{{ f.filas }} · {{ size(f.tamanoBytes) }}</td>
+                <td>{{ date(f.creado) }}</td>
+                <td>{{ date(f.expiraEn) }}</td>
+                <td>{{ f.enviadoA ?? '—' }}</td>
+                <td><app-button variant="secondary" [small]="true" (clicked)="downloadFile(f)">Descargar</app-button></td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+</app-card>

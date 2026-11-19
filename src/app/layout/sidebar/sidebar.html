@@ -15,6 +15,9 @@
       <a class="nav-link" [routerLink]="'/' + item.path" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
         <span>{{ item.icon }}</span>
         <span class="nav-text">{{ item.label }}</span>
+        @if (item.key === '/chat' && chatUnread() > 0) {
+          <span class="nav-badge" [attr.aria-label]="chatUnread() + ' mensajes sin leer'">{{ chatUnread() > 99 ? '99+' : chatUnread() }}</span>
+        }
       </a>
     }
   }

@@ -16,6 +16,21 @@
     />
   }
 
+  <!-- Filtros encadenados (curso → materia...) -->
+  @if (clientFilters().length) {
+    <div class="filters-row">
+      @for (f of clientFilters(); track f.field) {
+        <app-select-filter
+          [label]="f.label"
+          [options]="f.options"
+          [allLabel]="f.allLabel ?? 'Todos'"
+          [value]="f.value"
+          (changed)="onClientFilter(f.field, $event)"
+        />
+      }
+    </div>
+  }
+
   @switch (state()) {
     @case ('loading') {
       <app-loading-state />
@@ -26,7 +41,7 @@
     @default {
       <app-data-table
         [columns]="config().columns"
-        [data]="rows()"
+        [data]="visibleRows()"
         [actions]="hasActions() ? rowActions : undefined"
         (action)="onAction($event)"
       />

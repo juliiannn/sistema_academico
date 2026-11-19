@@ -5,12 +5,14 @@ export const HORARIOS_CONFIG: EntityConfig = {
   description: 'Horario semanal de clases de cada curso.',
   module: '/academic/schedules',
   endpoint: '/schedules',
+  listEndpoint: '/schedules?include_inactive=true',
   columns: [
     { key: 'courseName', label: 'Curso' },
     { key: 'subjectName', label: 'Materia' },
     { key: 'dayOfWeek', label: 'Día', kind: 'enum', enumKey: 'dayOfWeek' },
     { key: 'startTime', label: 'Hora de inicio' },
-    { key: 'endTime', label: 'Hora de fin' }
+    { key: 'endTime', label: 'Hora de fin' },
+    { key: 'estado', label: 'Estado', kind: 'bool' }
   ],
   fields: [
     { name: 'courseSubjectId', label: 'Curso y materia', type: 'ref', ref: 'courseSubjects' },
@@ -23,12 +25,8 @@ export const HORARIOS_CONFIG: EntityConfig = {
     idField: 'id',
     statusField: 'estado',
     activeValue: true,
+    activateUrl: id => `/schedules/${id}/activate`,
     deactivateUrl: id => `/schedules/${id}/deactivate`
   },
-  filter: {
-    label: 'Buscar por curso',
-    ref: 'courses',
-    allLabel: 'Todos los cursos',
-    path: id => `/schedules/course/${id}`
-  }
+  filters: [{ field: 'courseName', label: 'Curso', allLabel: 'Todos los cursos' }, { field: 'subjectName', label: 'Materia', allLabel: 'Todas las materias' }, { field: 'dayOfWeek', label: 'Día', allLabel: 'Todos los días', enumKey: 'dayOfWeek' }]
 };

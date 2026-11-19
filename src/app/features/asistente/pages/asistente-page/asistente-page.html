@@ -2,7 +2,7 @@
 
   <app-page-header
     title="Asistente de consultas"
-    subtitle="Pregunta en lenguaje natural sobre los datos de la institución. Solo lectura, y cada consulta queda en la auditoría."
+    subtitle="Pregunta o pide recomendaciones sobre los datos que tu rol puede ver. La IA no modifica información y cada consulta queda en la auditoría."
   >
     <app-button variant="secondary" (clicked)="toggleSettings()">⚙️ IA local</app-button>
     @if (hasConversation()) {
@@ -24,7 +24,7 @@
   }
 
   @if (!allowed) {
-    <app-alert type="error">El asistente es solo para administración, rectoría y coordinación.</app-alert>
+    <app-alert type="error">Tu rol no tiene acceso al asistente (tabla rol × módulo).</app-alert>
   } @else {
 
     <div class="chat">
@@ -47,7 +47,7 @@
     <app-chip-list [options]="examples" (picked)="ask($event)" />
 
     <app-chat-composer
-      placeholder="Ej: ¿Qué estudiantes tienen autismo?"
+      placeholder="Ej: ¿Qué estudiantes necesitan refuerzo y qué me recomiendas?"
       [disabled]="busy()"
       (send)="ask($event)"
     />

@@ -1,0 +1,31 @@
+.sheet-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 4px 0 16px; }
+.sheet-stat { background: var(--surface-2, #f4f6fb); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; }
+.sheet-stat strong { font-size: 22px; color: var(--text, #0f172a); }
+.sheet-stat span { font-size: 12px; color: var(--muted, #64748b); }
+
+.sheet-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+
+.sheet { border: 1px solid var(--border, #e2e8f0); border-radius: 12px; overflow: hidden; }
+.sheet-head, .sheet-row { display: grid; grid-template-columns: 1fr minmax(160px, 320px); align-items: center; gap: 12px; padding: 10px 14px; }
+.sheet-head { background: var(--surface-2, #f4f6fb); font-size: 12px; font-weight: 700; color: var(--muted, #64748b); text-transform: uppercase; letter-spacing: .03em; }
+.sheet-row + .sheet-row { border-top: 1px solid var(--border, #e2e8f0); }
+.sheet-row.changed { background: #fffbeb; }
+.sheet-name { display: flex; flex-direction: column; min-width: 0; }
+.sheet-name strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.sheet-grade { width: 110px; justify-self: start; }
+.sheet-grade.invalid { border-color: #dc2626; background: #fef2f2; }
+
+.sheet-status { display: flex; gap: 6px; flex-wrap: wrap; }
+.status-btn { border: 1px solid var(--border, #cbd5e1); background: #fff; border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+.status-btn.on.s-PRESENT { background: #dcfce7; border-color: #16a34a; color: #166534; font-weight: 700; }
+.status-btn.on.s-ABSENT { background: #fee2e2; border-color: #dc2626; color: #991b1b; font-weight: 700; }
+.status-btn.on.s-LATE { background: #fef3c7; border-color: #d97706; color: #92400e; font-weight: 700; }
+
+.sheet-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; }
+
+@media (max-width: 720px) {
+  .sheet-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .sheet-head { display: none; }
+  .sheet-head, .sheet-row { grid-template-columns: 1fr; }
+}

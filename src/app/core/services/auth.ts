@@ -1,7 +1,8 @@
 import { Injectable, computed, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { MAIN_API } from '../config';
-import { Session } from '../models/session.model';
+import { RoleName } from '../models/domain-types';
+import { ChangePasswordRequest, LoginRequest, LoginResponse, Session } from '../models/session.model';
 import { httpJson } from '../utils/http';
 
 // Única información que se guarda en el navegador: la sesión (token JWT, rol y correo), igual que el proyecto original.
@@ -26,8 +27,9 @@ export class AuthService {
   /** POST /auth/login en tu backend. */
   async login(email: string, password: string): Promise<Session> {
 
-    const result = await httpJson(
-      MAIN_API.baseUrl + '/auth/login', 'POST', { email, password }, null, MAIN_API.timeoutMs
+    const body: LoginRequest = { email, password };
+    const result = await httpJson<LoginResponse>(
+      MAIN_API.baseUrl + '/auth/login', 'POST', body, null, MAIN_API.timeoutMs
     );
 
     const data = result.data;
@@ -51,8 +53,9 @@ export class AuthService {
   /** PUT /auth/change-password */
   async changePassword(currentPassword: string, newPassword: string): Promise<void> {
 
+    const body: ChangePasswordRequest = { currentPassword, newPassword };
     await httpJson(
-      MAIN_API.baseUrl + '/auth/change-password', 'PUT', { currentPassword, newPassword },
+      MAIN_API.baseUrl + '/auth/change-password', 'PUT', body,
       this.token(), MAIN_API.timeoutMs
     );
 
@@ -86,7 +89,7 @@ export class AuthService {
 
     return {
       accessToken,
-      role: localStorage.getItem('role') ?? '',
+      role: (localStorage.getItem('role') ?? '') as RoleName | '',
       email: localStorage.getItem('email') ?? '',
       mustChangePassword: localStorage.getItem('mustChangePassword') === 'true'
     };

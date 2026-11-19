@@ -1,5 +1,5 @@
 import { Component, input } from '@angular/core';
-import { Row } from '../../../core/models/row.model';
+import { Submission } from '../../../core/models/academic.model';
 import { formatDateTime } from '../../../core/utils/datatable';
 
 // Una entrega: quién la escribió, su texto, estado, nota y retroalimentación. Admite contenido extra (formulario de nota).
@@ -9,14 +9,14 @@ import { formatDateTime } from '../../../core/utils/datatable';
   styleUrl: './submission-card.css'
 })
 export class SubmissionCard {
-  readonly submission = input.required<Row>();
+  readonly submission = input.required<Submission>();
   readonly showStudent = input(false);
 
   when(): string {
-    return formatDateTime(this.submission()['actualizado']);
+    return formatDateTime(this.submission().actualizado);
   }
 
   isGraded(): boolean {
-    return this.submission()['calificada'] === true;
+    return this.submission().calificada === true;
   }
 }

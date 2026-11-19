@@ -8,11 +8,12 @@ import { Alert } from '../../../../shared/components/alert/alert';
 import { Button } from '../../../../shared/components/button/button';
 import { FormField } from '../../../../shared/components/form-field/form-field';
 import { Logo } from '../../../../shared/components/logo/logo';
+import { PasswordToggle } from '../../../../shared/components/password-toggle/password-toggle';
 
 // Equivale a pages/login.html + assets/js/login.js
 @Component({
   selector: 'app-login-page',
-  imports: [ReactiveFormsModule, Logo, FormField, Button, Alert],
+  imports: [ReactiveFormsModule, Logo, FormField, Button, Alert, PasswordToggle],
   templateUrl: './login-page.html',
   host: { class: 'login-page' }
 })
@@ -30,6 +31,7 @@ export class LoginPage {
 
   readonly message = signal('');
   readonly isError = signal(false);
+  readonly busy = signal(false);
 
   async login(): Promise<void> {
 
@@ -42,8 +44,9 @@ export class LoginPage {
 
     const { email, password } = this.form.getRawValue();
 
-    this.message.set('Iniciando sesión...');
+    this.message.set('Iniciando sesión, espera un momento...');
     this.isError.set(false);
+    this.busy.set(true);
 
     try {
 
@@ -62,6 +65,8 @@ export class LoginPage {
 
       this.message.set(errorMessage(error));
       this.isError.set(true);
+    } finally {
+      this.busy.set(false);
     }
   }
 

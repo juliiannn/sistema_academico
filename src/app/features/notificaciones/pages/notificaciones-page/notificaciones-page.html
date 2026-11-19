@@ -1,0 +1,161 @@
+<app-card>
+  <app-page-header title="Notificaciones por correo"
+    subtitle="Estado del servidor de correo, eventos que envían avisos y seguimiento de cada correo.">
+    <app-button variant="secondary" [disabled]="busyId() === 'test' || loading()" (clicked)="sendTest()">
+      ✉ Enviar correo de prueba
+    </app-button>
+    <app-button variant="secondary" [disabled]="historyLoading()" (clicked)="refresh()">↻ Actualizar</app-button>
+  </app-page-header>
+
+  @if (loading()) {
+    <app-loading-state />
+  } @else if (error()) {
+    <app-alert type="error">{{ error() }}</app-alert>
+  } @else {
+
+    @if (config(); as c) {
+      @if (!c.configured) {
+        <app-alert type="error">
+          El servidor de correo no está configurado (variables SMTP_HOST, SMTP_USER, SMTP_PASSWORD y SMTP_FROM en el .env
+          de la API). Los correos quedan registrados como «Omitido» y se pueden reintentar cuando se configure.
+        </app-alert>
+      } @else {
+        <div class="smtp-status">
+          <span class="dot ok" aria-hidden="true"></span>
+          <span>Servidor <b>{{ c.host }}:{{ c.port }}</b> · seguridad <b>{{ c.security.toUpperCase() }}</b> · remitente <b>{{ c.sender }}</b></span>
+        </div>
+        @if (c.redirectTo) {
+          <app-alert type="info">
+            Modo de prueba activo: todos los correos se desvían a <b>{{ c.redirectTo }}</b> (variable EMAIL_REDIRECT_TO).
+            Quítala en producción para que lleguen a cada usuario.
+          </app-alert>
+        } @else {
+          <app-alert type="info">
+            Los correos se envían a la dirección registrada de cada usuario en la base de datos.
+            @if (c.allowedDomains.length) {
+              Solo a los dominios permitidos: <b>{{ c.allowedDomains.join(', ') }}</b>; los demás quedan «Omitido»
+              (variable EMAIL_ALLOWED_DOMAINS).
+            }
+          </app-alert>
+        }
+      }
+    }
+
+    <div class="grid stats">
+      <app-stat-card label="Correos registrados" [value]="stats().total" />
+      <app-stat-card label="Enviados" [value]="stats().enviados" />
+      <app-stat-card label="Fallidos" [value]="stats().fallidos" />
+      <app-stat-card label="Pendientes / omitidos" [value]="stats().pendientes + ' / ' + stats().omitidos" />
+      <app-stat-card label="Tasa de entrega" [value]="successRate()" />
+    </div>
+
+    <h3 class="section-label">Eventos que envían correo</h3>
+    <div class="settings-grid">
+      @for (s of settings(); track s.evento) {
+        <div class="setting" [class.off]="!s.activo">
+          <div class="setting-text">
+            <strong>{{ s.nombre }}</strong>
+            <span class="muted">{{ s.descripcion }}</span>
+            <span class="who">Para: {{ s.destinatarios }} · {{ eventCount(s.evento) }} correo(s)</span>
+          </div>
+          <label class="switch" [attr.aria-label]="'Activar ' + s.nombre">
+            <input type="checkbox" [checked]="s.activo" [disabled]="busyId() === s.evento"
+              (change)="toggle(s, $any($event.target).checked)" />
+            <span class="slider"></span>
+          </label>
+        </div>
+      }
+    </div>
+
+    <h3 class="section-label">Historial de correos</h3>
+    <div class="filters">
+      <label>
+        <span>Estado</span>
+        <select [value]="filters().estado" (change)="setFilter('estado', $any($event.target).value)">
+          <option value="">Todos</option>
+          @for (st of states; track st) {
+            <option [value]="st">{{ stateLabel(st) }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        <span>Evento</span>
+        <select [value]="filters().evento" (change)="setFilter('evento', $any($event.target).value)">
+          <option value="">Todos</option>
+          @for (s of settings(); track s.evento) {
+            <option [value]="s.evento">{{ s.nombre }}</option>
+          }
+        </select>
+      </label>
+      <label>
+        <span>Buscar (correo o asunto)</span>
+        <input type="search" [value]="filters().q" placeholder="Escribe y presiona Enter"
+          (input)="setFilter('q', $any($event.target).value)" (keyup.enter)="refresh()" />
+      </label>
+    </div>
+
+    @if (historyLoading()) {
+      <app-loading-state />
+    } @else if (!history().length) {
+      <p class="empty">No hay correos con esos filtros.</p>
+    } @else {
+      <div class="table-wrap">
+        <table class="table">
+          <thead>
+            <tr><th>Fecha</th><th>Evento</th><th>Destinatario</th><th>Asunto</th><th>Estado</th><th>Intentos</th><th></th></tr>
+          </thead>
+          <tbody>
+            @for (n of pagedHistory(); track n.id) {
+              <tr>
+                <td>{{ date(n.creado) }}</td>
+                <td>{{ n.eventoNombre }}</td>
+                <td>
+                  {{ n.destinatario }}
+                  @if (n.enviadoA && n.enviadoA !== n.destinatario) { <span class="muted small">→ {{ n.enviadoA }}</span> }
+                </td>
+                <td>{{ n.asunto }} @if (n.tieneAdjuntos) { <span title="Con archivos adjuntos">📎</span> }</td>
+                <td>
+                  <span [class]="'badge ' + stateClass(n.estado)">{{ stateLabel(n.estado) }}</span>
+                  @if (n.error) { <div class="error-text" [title]="n.error">{{ n.error }}</div> }
+                </td>
+                <td>{{ n.intentos }}</td>
+                <td class="row-actions">
+                  <app-button variant="secondary" [small]="true" (clicked)="detail.set(n)">Ver</app-button>
+                  @if (canRetry(n)) {
+                    <app-button variant="warning" [small]="true" [disabled]="busyId() === n.id" (clicked)="retry(n)">Reintentar</app-button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="pager">
+        <span class="muted">Mostrando {{ rangeText() }} (últimos 300)</span>
+        <div class="page-actions">
+          <app-button variant="secondary" [small]="true" [disabled]="page() === 1" (clicked)="goTo(page() - 1)">‹ Anterior</app-button>
+          <span class="page-num">Página {{ page() }} de {{ totalPages() }}</span>
+          <app-button variant="secondary" [small]="true" [disabled]="page() === totalPages()" (clicked)="goTo(page() + 1)">Siguiente ›</app-button>
+        </div>
+      </div>
+    }
+  }
+</app-card>
+
+@if (detail(); as n) {
+  <app-modal [title]="n.asunto" (closed)="detail.set(null)">
+    <dl class="detail">
+      <dt>Evento</dt><dd>{{ n.eventoNombre }}</dd>
+      <dt>Destinatario</dt><dd>{{ n.destinatario }} @if (n.usuarioNombre) { ({{ n.usuarioNombre }}) }</dd>
+      @if (n.enviadoA && n.enviadoA !== n.destinatario) { <dt>Entregado a</dt><dd>{{ n.enviadoA }} (modo de prueba)</dd> }
+      <dt>Estado</dt><dd><span [class]="'badge ' + stateClass(n.estado)">{{ stateLabel(n.estado) }}</span> · {{ n.intentos }} intento(s)</dd>
+      <dt>Registrado</dt><dd>{{ date(n.creado) }}</dd>
+      @if (n.enviadoEn) { <dt>Enviado</dt><dd>{{ date(n.enviadoEn) }}</dd> }
+      @if (n.error) { <dt>Error</dt><dd class="danger-text">{{ n.error }}</dd> }
+    </dl>
+    <pre class="mail-body">{{ n.resumen }}</pre>
+    @if (canRetry(n)) {
+      <app-button variant="warning" [disabled]="busyId() === n.id" (clicked)="retry(n)">Reintentar envío</app-button>
+    }
+  </app-modal>
+}

@@ -1,10 +1,11 @@
+import { compareLabels } from '../../../core/utils/grade-order';
 import { Component, OnInit, computed, inject, input, output, signal } from '@angular/core';
 import { FormControl, FormGroup, Validators } from '@angular/forms';
 import { PermissionsService } from '../../../core/services/permissions';
 import { ApiService } from '../../../core/services/api';
 import { ReferenceService } from '../../../core/services/references';
 import { ToastService } from '../../../core/services/toast';
-import { EntityConfig, FieldDef, Option } from '../../../core/models/crud.model';
+import { CrudChange, EntityConfig, FieldDef, Option } from '../../../core/models/crud.model';
 import { enumLabel, enumValues } from '../../../core/models/enums';
 import { Row } from '../../../core/models/row.model';
 import { TableAction } from '../../../core/utils/datatable';
@@ -61,9 +62,9 @@ export class CrudManager implements OnInit {
 
   // Avisa a la pantalla que lo usa cuando se crea, edita o cambia el estado de un registro
   // Botones propios de la pantalla (config.extraActions): se avisa cuál se pulsó y en qué fila
-  readonly rowAction = output<{ action: string; row: Row }>();
+  readonly rowAction = output<TableActionEvent>();
 
-  readonly changed = output<{ action: 'create' | 'update' | 'toggle'; label: string }>();
+  readonly changed = output<CrudChange>();
 
   private api = inject(ApiService);
   private refs = inject(ReferenceService);
@@ -74,6 +75,31 @@ export class CrudManager implements OnInit {
   readonly rows = signal<Row[]>([]);
   readonly loadError = signal('');
   readonly filterOptions = signal<Option[]>([]);
+
+  // Filtros encadenados (config.filters): valor elegido por campo
+  readonly filterValues = signal<Record<string, string>>({});
+
+  // Filas que pasan todos los filtros, excepto (opcionalmente) uno
+  private filtered(rows: Row[], values: Record<string, string>, skip?: string): Row[] {
+    return rows.filter(r => Object.entries(values).every(([field, v]) => !v || field === skip || String(r[field] ?? '') === v));
+  }
+
+  // Lo que muestra la tabla
+  readonly visibleRows = computed(() => this.filtered(this.rows(), this.filterValues()));
+
+  // Opciones de cada filtro según lo elegido en los otros (al elegir curso, solo aparecen sus materias)
+  readonly clientFilters = computed(() => (this.config().filters ?? []).map(f => {
+    const base = this.filtered(this.rows(), this.filterValues(), f.field);
+    const values = [...new Set(base.map(r => r[f.field]).filter(v => v !== null && v !== undefined && v !== '').map(String))];
+    const options: Option[] = values
+      .map(v => ({ value: v, label: f.enumKey ? enumLabel(f.enumKey, v) : v }))
+      .sort((a, b) => compareLabels(a.label, b.label));
+    return { ...f, options, value: this.filterValues()[f.field] ?? '' };
+  }));
+
+  onClientFilter(field: string, value: string): void {
+    this.filterValues.update(v => ({ ...v, [field]: value }));
+  }
 
   readonly modal = signal<ModalState | null>(null);
   readonly submitted = signal(false);

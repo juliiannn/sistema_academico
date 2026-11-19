@@ -1,0 +1,16 @@
+<app-card>
+  <app-page-header [title]="title()" [subtitle]="subtitle()">
+    <app-button variant="secondary" (clicked)="back()">← Volver al PIAR</app-button>
+  </app-page-header>
+
+  @if (piar(); as p) {
+    <p class="plan-info">
+      @if (needs().length) { <strong>Necesidad educativa:</strong> {{ needs().join(', ') }}. }
+      @if (p.observaciones) { <strong>Observaciones:</strong> {{ p.observaciones }} }
+    </p>
+  }
+
+  @if (id) {
+    <app-piar-plan [piarId]="id" (loaded)="piar.set($event)" />
+  }
+</app-card>

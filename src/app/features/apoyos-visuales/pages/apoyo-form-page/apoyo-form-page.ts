@@ -2,7 +2,7 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { FormArray, FormGroup } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Option } from '../../../../core/models/crud.model';
-import { Pictogram, Support } from '../../../../core/models/aux-api.model';
+import { Pictogram, StepMove, Support } from '../../../../core/models/aux-api.model';
 import { AuxApiService } from '../../../../core/services/aux-api';
 import { ToastService } from '../../../../core/services/toast';
 import { errorMessage } from '../../../../core/utils/format';
@@ -95,7 +95,7 @@ export class ApoyoFormPage implements OnInit {
     }
   }
 
-  moveStep(event: { index: number; direction: -1 | 1 }): void {
+  moveStep(event: StepMove): void {
     const target = event.index + event.direction;
     if (target < 0 || target >= this.steps.length) {
       return;

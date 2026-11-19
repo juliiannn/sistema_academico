@@ -1,7 +1,41 @@
 import { Component, ElementRef, OnDestroy, effect, input, output, untracked, viewChild } from '@angular/core';
 import { ColumnDef } from '../../../core/models/crud.model';
-import { Row } from '../../../core/models/row.model';
+import { Row, toRows } from '../../../core/models/row.model';
 import { SPANISH_LANGUAGE, TableAction, buildDataTableColumns } from '../../../core/utils/datatable';
+
+/** Lo que la tabla usa de una instancia de DataTables. */
+interface DataTableInstance {
+  clear(): DataTableInstance;
+  rows: { add(data: Row[]): DataTableInstance };
+  draw(keepPaging?: boolean): DataTableInstance;
+  destroy(): void;
+}
+
+/** Opciones con que se crea la tabla. */
+interface DataTableOptions {
+  data: Row[];
+  columns: object[];
+  pageLength: number;
+  lengthMenu: number[];
+  order: unknown[];
+  autoWidth: boolean;
+  language: object;
+}
+
+/** Constructor que exporta la librería datatables.net. */
+type DataTableConstructor = new (element: HTMLTableElement, options: DataTableOptions) => DataTableInstance;
+
+/** Lo que exporta el paquete datatables.net. */
+interface DataTablesModule {
+  default: DataTableConstructor;
+}
+
+/** Estructura con que se construyó la tabla (si no cambia, solo se reemplazan los datos). */
+interface TableStructure {
+  columns: ColumnDef[];
+  actions: unknown;
+  size: number;
+}
 
 export interface TableActionEvent {
   action: string;
@@ -19,7 +53,8 @@ export interface TableActionEvent {
 export class DataTable implements OnDestroy {
 
   readonly columns = input.required<ColumnDef[]>();
-  readonly data = input<Row[]>([]);
+  // Acepta cualquier lista de entidades tipadas (Grade[], Piar[]...): la tabla solo lee sus campos por nombre
+  readonly data = input<readonly object[]>([]);
 
   // Función que devuelve los botones de cada fila (si no se pasa, no hay columna "Acciones")
   readonly actions = input<((row: Row) => TableAction[]) | undefined>(undefined);
@@ -30,13 +65,13 @@ export class DataTable implements OnDestroy {
 
   private readonly tableRef = viewChild<ElementRef<HTMLTableElement>>('tbl');
 
-  private instance: any = null;
+  private instance: DataTableInstance | null = null;
   private rows: Row[] = [];
   private index = new Map<Row, number>();
   private ticket = 0;
   private destroyed = false;
   private listeningOn: HTMLTableElement | null = null;
-  private built: { columns: ColumnDef[]; actions: unknown; size: number } | null = null;
+  private built: TableStructure | null = null;
 
   private readonly onClick = (event: Event): void => {
 
@@ -58,7 +93,7 @@ export class DataTable implements OnDestroy {
     effect(() => {
       const element = this.tableRef()?.nativeElement;
       const columns = this.columns();
-      const data = this.data();
+      const data = toRows([...this.data()]);
       const actions = this.actions();
       const size = this.pageSize();
 
@@ -82,28 +117,27 @@ export class DataTable implements OnDestroy {
     this.index = new Map(data.map((row, i) => [row, i]));
     this.listen(element);
 
+    const current = this.instance;
     const sameStructure =
-      this.instance && this.built &&
+      current !== null && this.built !== null &&
       this.built.columns === columns && this.built.actions === actions && this.built.size === size;
 
     // Solo cambiaron los datos: se reemplazan las filas conservando la página y la búsqueda actuales
-    if (sameStructure) {
-      this.instance.clear();
-      this.instance.rows.add(data);
-      this.instance.draw(false);
+    if (current && sameStructure) {
+      current.clear();
+      current.rows.add(data);
+      current.draw(false);
       return;
     }
 
     const ticket = ++this.ticket;
 
     // La librería se descarga solo cuando se necesita una tabla
-    const module: any = await import('datatables.net');
+    const DataTablesLib = ((await import('datatables.net')) as unknown as DataTablesModule).default;
 
     if (this.destroyed || ticket !== this.ticket) {
       return;
     }
-
-    const DataTablesLib = module.default ?? module;
 
     this.instance?.destroy();
 

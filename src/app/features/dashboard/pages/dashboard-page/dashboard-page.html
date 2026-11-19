@@ -10,49 +10,73 @@
 
 } @else {
 
+  <header class="board-head">
+    <div>
+      <h1>Tablero institucional</h1>
+      <p class="muted">{{ filterText() }}</p>
+    </div>
+  </header>
+
   @if (error()) {
     <app-alert type="error">{{ error() }}</app-alert>
   }
 
-  <div class="grid stats">
-    <app-stat-card label="Estudiantes" [value]="stat('totalStudents')" />
-    <app-stat-card label="Docentes" [value]="stat('totalTeachers')" />
-    <app-stat-card label="Coordinadores" [value]="stat('totalCoordinators')" />
-    <app-stat-card label="Cursos activos" [value]="stat('activeCourses')" />
-    <app-stat-card label="Materias" [value]="stat('totalSubjects')" />
-  </div>
+  @if (loading()) {
+    <app-loading-state message="Cargando el tablero..." />
+  } @else {
+    <section class="board">
 
-  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(320px,1fr))">
-
-    <app-card title="Estudiantes por curso">
-      <div class="chart-box">
-        <app-mini-chart type="bar" legend="Estudiantes" [labels]="studentsByCourse().labels" [values]="studentsByCourse().values" />
+      <!-- 4 indicadores -->
+      <div class="kpis">
+        @for (k of kpis(); track k.label) {
+          <article class="kpi" [class]="'kpi kpi-' + k.tone">
+            <span class="kpi-label">{{ k.label }}</span>
+            <strong class="kpi-value">{{ k.value }}</strong>
+            <small class="kpi-hint">{{ k.hint }}</small>
+          </article>
+        }
       </div>
-    </app-card>
 
-    <app-card title="Promedios por materia">
-      <div class="chart-box">
-        <app-mini-chart type="bar" legend="Promedio" [labels]="averageGrades().labels" [values]="averageGrades().values" />
+      <!-- 6 gráficos -->
+      <div class="charts">
+        @for (c of charts(); track c.title) {
+          <app-dashboard-chart [chart]="c" />
+        }
       </div>
-    </app-card>
 
-    <app-card title="Asistencia por curso">
-      <div class="chart-box">
-        <app-mini-chart type="line" legend="Asistencia %" [labels]="attendanceRate().labels" [values]="attendanceRate().values" />
-      </div>
-    </app-card>
+      <!-- Panel de filtros -->
+      <aside class="filters" aria-label="Filtros del tablero">
+        <h2>Filtros</h2>
 
-  </div>
+        <p class="filter-title">Curso</p>
+        <div class="slicer" role="radiogroup" aria-label="Curso">
+          @for (o of courseOptions(); track o.value) {
+            <button type="button" role="radio" class="slicer-item" [class.on]="course() === o.value"
+                    [attr.aria-checked]="course() === o.value" (click)="setCourse(o.value)">{{ o.label }}</button>
+          }
+        </div>
 
+        <p class="filter-title">Periodo <small>(notas)</small></p>
+        <div class="periods" role="radiogroup" aria-label="Periodo">
+          @for (o of periodOptions; track o.value) {
+            <button type="button" role="radio" class="period-chip" [class.on]="period() === o.value"
+                    [attr.aria-checked]="period() === o.value" (click)="setPeriod(o.value)">{{ o.label }}</button>
+          }
+        </div>
+
+        <button type="button" class="clear" (click)="clearFilters()" [disabled]="!course() && !period()">Limpiar filtros</button>
+      </aside>
+    </section>
+  }
 }
 
 @if (announcements().length > 0) {
   <app-card title="Últimos comunicados">
-    @for (item of announcements(); track item['id']) {
+    @for (item of announcements(); track item.id) {
       <div class="announcement">
-        <strong>{{ item['titulo'] }}</strong>
-        <p>{{ item['contenido'] }}</p>
-        <small class="muted">{{ item['publicadoPorNombre'] }} · {{ when(item['creado']) }}</small>
+        <strong>{{ item.titulo }}</strong>
+        <p>{{ item.contenido }}</p>
+        <small class="muted">{{ item.publicadoPorNombre }} · {{ when(item.creado) }}</small>
       </div>
     }
   </app-card>

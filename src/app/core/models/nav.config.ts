@@ -24,19 +24,26 @@ const ICONS: Record<string, string> = {
   '/academic/assignments': '📌', '/academic/submissions': '📨', '/academic/schedules': '🗓️',
   '/announcements': '📣',
   '/piar': '🧩', '/piar/special-needs': '🩺', '/piar/supports': '🖼️',
-  '/assistant': '🤖', '/audit': '🛡️',
+  '/assistant': '🤖', '/audit': '🛡️', '/reports': '📑', '/admin/notifications': '✉️', '/chat': '💬',
   '/my/profile': '🙋', '/my/schedule': '🗓️',
   '/student/grades': '📈', '/student/attendance': '📅', '/student/assignments': '📌',
   '/student/submissions': '📨', '/student/support': '🧩', '/student/supports': '🖼️', '/student/report-card': '📄'
 };
 
+/** Sección del menú lateral y la regla que decide qué rutas van en ella. */
+interface NavGroupRule {
+  title: string;
+  match: (path: string) => boolean;
+}
+
 // Grupo del menú según el inicio de la ruta (el orden de esta lista es el orden de los grupos)
-const GROUPS: { title: string; match: (path: string) => boolean }[] = [
+const GROUPS: NavGroupRule[] = [
   { title: 'Principal', match: p => p === '/dashboard' || p === '/announcements' },
   { title: 'Personas', match: p => p.startsWith('/people/') || p === '/admin/users' },
   { title: 'Académico', match: p => p.startsWith('/academic/') },
   { title: 'Inclusión (PIAR)', match: p => p.startsWith('/piar') },
-  { title: 'Administración', match: p => p.startsWith('/admin/') || p === '/assistant' || p === '/audit' },
+  { title: 'Herramientas', match: p => p === '/assistant' || p === '/reports' || p === '/chat' },
+  { title: 'Administración', match: p => p.startsWith('/admin/') || p === '/audit' },
   { title: 'Mi espacio', match: p => p.startsWith('/my/') || p.startsWith('/student/') }
 ];
 

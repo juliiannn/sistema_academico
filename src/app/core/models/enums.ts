@@ -1,6 +1,6 @@
 // Valores permitidos (los que viajan en los datos) y su etiqueta en español (lo que ve el usuario)
 export const ENUM_LABELS: Record<string, Record<string, string>> = {
-  documentType: { TI: 'Tarjeta de identidad', CC: 'Cédula de ciudadanía', CE: 'Cédula de extranjería', PASSPORT: 'Pasaporte' },
+  documentType: { RC: 'Registro civil', TI: 'Tarjeta de identidad', CC: 'Cédula de ciudadanía', CE: 'Cédula de extranjería', PASSPORT: 'Pasaporte' },
   gender: { MALE: 'Masculino', FEMALE: 'Femenino', OTHER: 'Otro' },
   educationLevel: { BACHELOR: 'Bachiller', UNDERGRADUATE: 'Pregrado', SPECIALIST: 'Especialista', MASTER: 'Magíster', DOCTORATE: 'Doctorado' },
   contractType: { FULL_TIME: 'Tiempo completo', PART_TIME: 'Medio tiempo', HOURLY: 'Por horas', TEMPORARY: 'Temporal' },
@@ -20,6 +20,9 @@ export const ENUM_LABELS: Record<string, Record<string, string>> = {
   },
   auditAction: { CREATE: 'Crear', READ: 'Consultar', UPDATE: 'Actualizar', DELETE: 'Desactivar', LOGIN: 'Ingreso', OTHER: 'Otra' },
   yesNo: { true: 'Sí', false: 'No' },
+  notificationState: { ENVIADO: 'Enviado', FALLIDO: 'Fallido', PENDIENTE: 'Pendiente', OMITIDO: 'Omitido' },
+  adjustmentType: { ACCESS: 'De acceso', CURRICULAR: 'Curricular', METHODOLOGICAL: 'Metodológico', EVALUATIVE: 'Evaluativo' },
+  progressLevel: { NOT_STARTED: 'Sin iniciar', IN_PROGRESS: 'En proceso', ACHIEVED: 'Logrado' },
   scope: { ALL: 'Todos los datos', ASSIGNED: 'Solo sus cursos', OWN: 'Solo lo propio' },
   submissionState: { GRADED: 'Calificada', PENDING: 'Pendiente de calificar', LATE: 'Entregada tarde' },
   role: { ADMIN: 'Administrador', RECTOR: 'Rector', COORDINATOR: 'Coordinador', TEACHER: 'Docente', STUDENT: 'Estudiante', USER: 'Usuario' }

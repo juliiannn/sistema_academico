@@ -881,3 +881,8 @@ app-layout { display: block; }
 .announcement { padding: 12px 0; border-bottom: 1px solid var(--border); }
 .announcement:last-child { border-bottom: 0; }
 .announcement p { margin: 6px 0; }
+
+/* Varios filtros en una fila (curso → materia...) */
+.filters-row { display: flex; flex-wrap: wrap; gap: 0 16px; }
+.filters-row app-select-filter { flex: 1 1 240px; max-width: 360px; }
+.filters-row .filter-bar { max-width: none; }

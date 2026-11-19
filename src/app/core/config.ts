@@ -7,7 +7,7 @@ import { environment } from '../../environments/environment';
 // └──────────────────────────────────────────────────────────────────────────────┘
 export const MAIN_API = {
   baseUrl: environment.mainApiUrl,
-  timeoutMs: 60000
+  timeoutMs: 20000
 };
 
 // Rutas de la API principal que se usan en varias pantallas
@@ -21,13 +21,13 @@ export const API_ENDPOINTS = {
 // IA local (Ollama en Docker). Estos son los valores por defecto; en el chat se pueden cambiar y se guardan en el navegador.
 export const OLLAMA_DEFAULTS = {
   baseUrl: environment.ollamaUrl,
-  model: 'llama3.2',
-  enabled: false,      // true = el chat usa tu IA local desde que abre la app
+  model: 'qwen3:4b',   // modelo generativo recomendado (8-12 GB de RAM). PC de 8 GB: 'llama3.2:3b'
+  enabled: true,       // el asistente GENERA sus respuestas con la IA local (si no responde, usa el modo básico)
   timeoutMs: 90000
 };
 
 // API auxiliar (apoyos visuales, pictogramas ARASAAC y auditoría).
 export const AUX_API = {
   baseUrl: environment.auxApiUrl,
-  timeoutMs: 60000
+  timeoutMs: 15000
 };

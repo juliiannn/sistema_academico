@@ -1,0 +1,61 @@
+.plan-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 4px 0 18px; }
+.plan-stat { background: var(--surface-2, #f4f6fb); border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 10px 14px; display: flex; flex-direction: column; }
+.plan-stat strong { font-size: 22px; color: var(--text, #0f172a); }
+.plan-stat span { font-size: 12px; color: var(--muted, #64748b); }
+
+.plan-section { margin-bottom: 26px; }
+.plan-title { margin: 0 0 6px; font-size: 17px; }
+
+.goal { border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 12px 14px; margin: 10px 0; background: #fff; }
+.goal-head { display: flex; align-items: flex-start; gap: 10px; }
+.goal-text { margin: 0; flex: 1; font-weight: 600; }
+
+.tag { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: #e0e7ff; color: #3730a3; white-space: nowrap; }
+.tag-general { background: #f1f5f9; color: #475569; }
+.tag.type { background: #fef3c7; color: #92400e; }
+
+.link-danger { border: 0; background: none; color: #b91c1c; font-size: 13px; cursor: pointer; padding: 2px 4px; }
+.link-danger:hover { text-decoration: underline; }
+.link-danger:disabled { opacity: .5; cursor: default; }
+
+.periods { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.period { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; border: 1px solid var(--border, #e2e8f0); border-radius: 10px; padding: 8px 10px; background: #f8fafc; text-align: left; font: inherit; color: inherit; }
+.period small { font-size: 11px; color: var(--muted, #64748b); }
+.period strong { font-size: 13px; }
+.period:disabled { cursor: default; }
+.period.clickable { cursor: pointer; }
+.period.clickable:hover { border-color: #6366f1; }
+.period.open { outline: 2px solid #6366f1; outline-offset: 1px; }
+.period.lvl-NOT_STARTED { background: #f1f5f9; border-color: #cbd5e1; }
+.period.lvl-IN_PROGRESS { background: #fef3c7; border-color: #f59e0b; }
+.period.lvl-ACHIEVED { background: #dcfce7; border-color: #16a34a; }
+
+.progress-editor { margin-top: 10px; padding: 12px; border-radius: 10px; background: #eef2ff; display: flex; flex-direction: column; gap: 10px; }
+.editor-title { margin: 0; font-weight: 700; font-size: 14px; }
+.level-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+.level-btn { border: 1px solid var(--border, #cbd5e1); background: #fff; border-radius: 999px; padding: 6px 14px; font-size: 13px; cursor: pointer; }
+.level-btn.on.lvl-NOT_STARTED { background: #e2e8f0; border-color: #475569; font-weight: 700; }
+.level-btn.on.lvl-IN_PROGRESS { background: #fef3c7; border-color: #d97706; color: #92400e; font-weight: 700; }
+.level-btn.on.lvl-ACHIEVED { background: #dcfce7; border-color: #16a34a; color: #166534; font-weight: 700; }
+.progress-editor textarea { width: 100%; resize: vertical; }
+.editor-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.notes { margin: 10px 0 0; padding-left: 18px; font-size: 13px; }
+.notes li + li { margin-top: 3px; }
+
+.adjustments { list-style: none; margin: 8px 0; padding: 0; }
+.adjustment { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border: 1px solid var(--border, #e2e8f0); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; background: #fff; }
+.adjustment p { margin: 0; flex: 1; min-width: 200px; }
+
+.plan-form { border: 1px dashed #c7d2fe; border-radius: 12px; padding: 12px 14px; margin-top: 12px; background: #fafbff; }
+.form-title { margin: 0 0 8px; font-weight: 700; font-size: 14px; }
+.form-grid { display: grid; grid-template-columns: minmax(160px, 240px) 1fr; gap: 10px; margin-bottom: 10px; }
+.form-grid.three { grid-template-columns: minmax(150px, 200px) minmax(160px, 220px) 1fr; }
+.form-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 600; }
+
+@media (max-width: 720px) {
+  .plan-summary, .periods { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .form-grid, .form-grid.three { grid-template-columns: 1fr; }
+  .goal-head { flex-wrap: wrap; }
+  .goal-text { flex-basis: 100%; order: 3; }
+}

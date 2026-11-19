@@ -100,6 +100,9 @@ export const routes: Routes = [
       feature('piar/disability/:code', 'PIAR por discapacidad', () =>
         import('./features/piar/pages/piar-disability-page/piar-disability-page').then(m => m.PiarDisabilityPage),
         { module: '/piar' }),
+      feature('piar/plan/:id', 'Seguimiento del PIAR', () =>
+        import('./features/piar/pages/piar-plan-page/piar-plan-page').then(m => m.PiarPlanPage),
+        { module: '/piar' }),
       feature('piar/special-needs', 'Necesidades educativas', () =>
         import('./features/necesidades/pages/necesidades-page/necesidades-page').then(m => m.NecesidadesPage)),
       feature('piar/supports', 'Apoyos visuales', () =>
@@ -116,6 +119,12 @@ export const routes: Routes = [
         import('./features/asistente/pages/asistente-page/asistente-page').then(m => m.AsistentePage)),
       feature('audit', 'Auditoría', () =>
         import('./features/auditoria/pages/auditoria-page/auditoria-page').then(m => m.AuditoriaPage)),
+      feature('chat', 'Chat', () =>
+        import('./features/chat/pages/chat-page/chat-page').then(m => m.ChatPage)),
+      feature('reports', 'Reportes', () =>
+        import('./features/reportes/pages/reportes-page/reportes-page').then(m => m.ReportesPage)),
+      feature('admin/notifications', 'Notificaciones', () =>
+        import('./features/notificaciones/pages/notificaciones-page/notificaciones-page').then(m => m.NotificacionesPage)),
 
       // ── Mi espacio (estudiante y docente: la página se adapta al rol) ──
       feature('my/profile', 'Mi perfil', () =>

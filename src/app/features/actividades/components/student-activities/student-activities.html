@@ -12,10 +12,10 @@
 </app-card>
 
 @if (selected(); as row) {
-  <app-modal [title]="row['title']" (closed)="close()">
+  <app-modal [title]="row.title" (closed)="close()">
 
-    <p class="muted">{{ row['subjectName'] }} · {{ row['courseName'] }} · Entrega: {{ row['dueDate'] }}</p>
-    <p>{{ row['description'] }}</p>
+    <p class="muted">{{ row.subjectName }} · {{ row.courseName }} · Entrega: {{ row.dueDate }}</p>
+    <p>{{ row.description }}</p>
 
     @if (modalError()) {
       <app-alert type="error">{{ modalError() }}</app-alert>
@@ -26,7 +26,7 @@
       <p class="muted">Tu docente ya calificó esta respuesta, por eso no se puede modificar.</p>
     } @else {
       <app-answer-box
-        [initial]="activeSubmission(row)?.['contenido'] ?? ''"
+        [initial]="activeSubmission(row)?.contenido ?? ''"
         [submitLabel]="activeSubmission(row) ? 'Guardar cambios' : 'Enviar respuesta'"
         [saving]="saving()"
         (send)="send($event)"

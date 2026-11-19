@@ -1,6 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { ColumnDef, Option } from '../../../../core/models/crud.model';
-import { Row } from '../../../../core/models/row.model';
 import { AiSettings, AiSettingsService } from '../../../../core/services/ai-settings';
 import { AssistantService } from '../../../../core/services/assistant';
 import { OllamaService } from '../../../../core/services/ollama';
@@ -19,7 +18,7 @@ interface ChatMessage {
   author: 'user' | 'assistant';
   text: string;
   columns: ColumnDef[];
-  rows: Row[];
+  rows: readonly object[];   // filas de la tabla de la respuesta (cualquier entidad)
   query: string;
   isError: boolean;
 }
@@ -50,8 +49,8 @@ export class AsistentePage {
   readonly messages = signal<ChatMessage[]>([
     {
       id: 0, author: 'assistant', isError: false, columns: [], rows: [], query: '',
-      text: 'Hola, soy el asistente de consultas. Pregúntame por estudiantes, notas, asistencia, matrículas, PIAR o apoyos visuales. ' +
-        'Solo leo datos: no modifico nada.'
+      text: 'Hola, soy el asistente pedagógico. Puedo resumir notas y asistencia, detectar estudiantes que necesitan refuerzo, ' +
+        'sugerir ajustes razonables para el PIAR y redactar mensajes o actividades. Uso solo los datos que tu rol puede ver y no modifico nada.'
     }
   ]);
 

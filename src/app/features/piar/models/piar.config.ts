@@ -1,18 +1,20 @@
 import { EntityConfig } from '../../../core/models/crud.model';
-import { Row } from '../../../core/models/row.model';
+import { Piar, PiarCreateRequest, PiarUpdateRequest, SpecialNeed } from '../../../core/models/piar.model';
+import { Row, asEntity, asRow, fromRows, toRows } from '../../../core/models/row.model';
 import { API_ENDPOINTS } from '../../../core/config';
 import { specialNeedIdFor, withDisability } from '../../../core/utils/piar';
 
 // PIAR (Plan Individual de Ajustes Razonables, Decreto 1421 de 2017).
 // Quién crea, edita o desactiva lo decide la tabla role_modules (módulo /piar).
 // loadCatalog: trae el catálogo de necesidades educativas (GET /special-needs) para guardar la discapacidad elegida.
-export function buildPiarConfig(loadCatalog: () => Promise<Row[]>): EntityConfig {
+export function buildPiarConfig(loadCatalog: () => Promise<SpecialNeed[]>): EntityConfig {
   return {
     title: 'PIAR · Estudiantes con discapacidad',
     description: 'Plan de cada estudiante: tipo de discapacidad, observaciones y ajustes razonables, y consentimiento del acudiente.',
     module: '/piar',
     endpoint: API_ENDPOINTS.piar,
-    transform: withDisability,
+    transform: rows => toRows(withDisability(fromRows<Piar>(rows))),
+    extraActions: [{ key: 'plan', label: 'Seguimiento', variant: 'primary' }],
     columns: [
       { key: 'studentName', label: 'Estudiante' },
       { key: 'schoolYear', label: 'Año escolar' },
@@ -31,21 +33,23 @@ export function buildPiarConfig(loadCatalog: () => Promise<Row[]>): EntityConfig
     ],
     update: ['observaciones', 'consentimientoAcudiente'],
     toBody: async (body: Row, mode: 'create' | 'edit', row: Row | null) => {
+      // body = valores del formulario (texto); se arma el cuerpo tipado que espera la API
+      const observaciones = body['observaciones'] ? String(body['observaciones']) : null;
+      const consentimientoAcudiente = String(body['consentimientoAcudiente']) === 'true';
       if (mode === 'edit') {
-        return {
-          observaciones: body['observaciones'],
-          consentimientoAcudiente: body['consentimientoAcudiente'],
-          fechaFin: row?.['fechaFin'] ?? null
+        const update: PiarUpdateRequest = {
+          observaciones, consentimientoAcudiente, fechaFin: row ? asEntity<Piar>(row).fechaFin : null
         };
+        return asRow(update);
       }
       const specialNeedId = specialNeedIdFor(String(body['disability']), await loadCatalog());
-      return {
-        studentId: body['studentId'],
-        schoolYear: body['schoolYear'],
-        observaciones: body['observaciones'],
-        consentimientoAcudiente: body['consentimientoAcudiente'],
+      const create: PiarCreateRequest = {
+        studentId: Number(body['studentId']),
+        schoolYear: Number(body['schoolYear']),
+        observaciones, consentimientoAcudiente,
         needs: [{ specialNeedId }]
       };
+      return asRow(create);
     },
     toggle: {
       idField: 'id',

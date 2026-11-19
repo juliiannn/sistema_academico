@@ -11,13 +11,18 @@
     <h3 class="section-title">{{ title() }}</h3>
     <app-disability-guide [guide]="guide()" [showAreas]="false" tipsTitle="Cómo hacer tus actividades" />
 
-    @if (piar()?.['observaciones']) {
-      <p><strong>Ajustes acordados para ti:</strong> {{ piar()?.['observaciones'] }}</p>
+    @if (piar()?.observaciones) {
+      <p><strong>Ajustes acordados para ti:</strong> {{ piar()?.observaciones }}</p>
     }
   }
 </app-card>
 
 @if (piar() !== null) {
+
+  <app-card>
+    <app-page-header title="Mis metas y ajustes" subtitle="Lo que estás trabajando este año y cómo vas en cada periodo." />
+    <app-piar-plan [piarId]="piarId()" [readonly]="true" [own]="true" />
+  </app-card>
 
   <app-card>
     <app-page-header title="Actividades por entregar" subtitle="Usa tus apoyos en cada una." />

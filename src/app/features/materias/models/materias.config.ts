@@ -5,6 +5,7 @@ export const MATERIAS_CONFIG: EntityConfig = {
   description: 'Asignaturas que se dictan en la institución.',
   module: '/academic/subjects',
   endpoint: '/subjects',
+  listEndpoint: '/subjects?include_inactive=true',
   columns: [
     { key: 'name', label: 'Materia' },
     { key: 'estado', label: 'Estado', kind: 'bool' }

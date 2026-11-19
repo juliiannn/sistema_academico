@@ -1,0 +1,152 @@
+@if (state() === 'loading') {
+  <app-loading-state message="Cargando el seguimiento del PIAR..." />
+} @else if (state() === 'error') {
+  <app-alert type="error">{{ loadError() }}</app-alert>
+  <app-button variant="secondary" (clicked)="load()">Reintentar</app-button>
+} @else {
+
+  <div class="plan-summary">
+    @for (s of summary(); track s.label) {
+      <div class="plan-stat"><strong>{{ s.value }}</strong><span>{{ s.label }}</span></div>
+    }
+  </div>
+
+  <!-- ===== METAS Y AVANCE POR PERIODO ===== -->
+  <section class="plan-section">
+    <h3 class="plan-title">Metas y avance por periodo</h3>
+    @if (canProgress()) {
+      <p class="muted">Toca la casilla de un periodo para registrar o corregir el avance de la meta.</p>
+    } @else if (!readonly()) {
+      <p class="muted">El avance de cada periodo lo registran los docentes del estudiante.</p>
+    }
+
+    @if (goals().length === 0) {
+      <app-empty-state [message]="readonly() ? 'Todavía no hay metas en tu plan.' : 'Este PIAR todavía no tiene metas. Agrega la primera abajo.'" />
+    }
+
+    @for (g of goals(); track g.id) {
+      <article class="goal">
+        <div class="goal-head">
+          <span class="tag" [class.tag-general]="!g.subject">{{ g.subject || 'General' }}</span>
+          <p class="goal-text">{{ g.descripcion }}</p>
+          @if (canDelete()) {
+            <button type="button" class="link-danger" [disabled]="busy()" (click)="askRemove('goal', g.id, g.descripcion)">Quitar</button>
+          }
+        </div>
+
+        <div class="periods" role="group" [attr.aria-label]="'Avance de la meta: ' + g.descripcion">
+          @for (p of periods; track p) {
+            @let prog = progressOf(g.id, p);
+            <button type="button" class="period"
+                    [class]="'period lvl-' + (prog?.nivel ?? 'NONE') + (canProgress() ? ' clickable' : '') + (draft()?.goalId === g.id && draft()?.period === p ? ' open' : '')"
+                    [disabled]="!canProgress()"
+                    [attr.title]="prog?.observaciones || null"
+                    (click)="openProgress(g.id, p)">
+              <small>{{ periodLabel(p) }}</small>
+              <strong>{{ prog ? levelLabel(prog.nivel) : '—' }}</strong>
+            </button>
+          }
+        </div>
+
+        @if (draft(); as d) {
+          @if (d.goalId === g.id) {
+            <div class="progress-editor">
+              <p class="editor-title">{{ d.progressId ? 'Corregir' : 'Registrar' }} avance · {{ periodLabel(d.period) }}</p>
+              <div class="level-buttons" role="radiogroup" aria-label="Nivel de avance">
+                @for (l of levels; track l) {
+                  <button type="button" role="radio" [attr.aria-checked]="d.nivel === l"
+                          [class]="'level-btn lvl-' + l + (d.nivel === l ? ' on' : '')"
+                          (click)="setDraftLevel(l)">{{ levelLabel(l) }}</button>
+                }
+              </div>
+              <textarea rows="2" maxlength="500" placeholder="Observaciones (qué logró, qué apoyo necesitó...)"
+                        [value]="d.observaciones" (input)="setDraftNotes($any($event.target).value)"></textarea>
+              <div class="editor-actions">
+                <app-button variant="secondary" [small]="true" (clicked)="draft.set(null)">Cancelar</app-button>
+                <app-button [small]="true" [disabled]="busy()" (clicked)="saveProgress()">{{ busy() ? 'Guardando...' : 'Guardar avance' }}</app-button>
+              </div>
+            </div>
+          }
+        }
+
+        @if (notesOf(g.id).length) {
+          <ul class="notes">
+            @for (n of notesOf(g.id); track n.id) {
+              <li><strong>{{ periodLabel(n.period) }}:</strong> {{ n.observaciones }} <span class="muted">— {{ n.teacher }}</span></li>
+            }
+          </ul>
+        }
+      </article>
+    }
+
+    @if (canCreate()) {
+      <form class="plan-form" (ngSubmit)="addGoal()">
+        <p class="form-title">Nueva meta</p>
+        <div class="form-grid">
+          <label>Materia
+            <select name="goalSubject" [(ngModel)]="newGoal.subject">
+              <option value="">General (todas las materias)</option>
+              @for (s of subjects(); track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+            </select>
+          </label>
+          <label>Meta
+            <input name="goalText" maxlength="500" [(ngModel)]="newGoal.descripcion"
+                   placeholder="Ej.: Resolver sumas de dos cifras con material concreto" />
+          </label>
+        </div>
+        <app-button type="submit" [small]="true" [disabled]="busy()">Agregar meta</app-button>
+      </form>
+    }
+  </section>
+
+  <!-- ===== AJUSTES RAZONABLES ===== -->
+  <section class="plan-section">
+    <h3 class="plan-title">Ajustes razonables</h3>
+
+    @if (adjustments().length === 0) {
+      <app-empty-state [message]="readonly() ? 'Todavía no hay ajustes registrados en tu plan.' : 'Este PIAR todavía no tiene ajustes por materia.'" />
+    }
+
+    <ul class="adjustments">
+      @for (a of adjustments(); track a.id) {
+        <li class="adjustment">
+          <span class="tag type">{{ typeLabel(a.tipo) }}</span>
+          <span class="tag" [class.tag-general]="!a.subject">{{ a.subject || 'General' }}</span>
+          <p>{{ a.descripcion }}</p>
+          @if (canDelete()) {
+            <button type="button" class="link-danger" [disabled]="busy()" (click)="askRemove('adjustment', a.id, a.descripcion)">Quitar</button>
+          }
+        </li>
+      }
+    </ul>
+
+    @if (canCreate()) {
+      <form class="plan-form" (ngSubmit)="addAdjustment()">
+        <p class="form-title">Nuevo ajuste razonable</p>
+        <div class="form-grid three">
+          <label>Tipo
+            <select name="adjType" [(ngModel)]="newAdjustment.tipo">
+              @for (t of types; track t.value) { <option [value]="t.value">{{ t.label }}</option> }
+            </select>
+          </label>
+          <label>Materia
+            <select name="adjSubject" [(ngModel)]="newAdjustment.subject">
+              <option value="">General (todas las materias)</option>
+              @for (s of subjects(); track s.value) { <option [value]="s.value">{{ s.label }}</option> }
+            </select>
+          </label>
+          <label>Ajuste
+            <input name="adjText" maxlength="500" [(ngModel)]="newAdjustment.descripcion"
+                   placeholder="Ej.: Evaluación oral y con tiempo adicional" />
+          </label>
+        </div>
+        <app-button type="submit" [small]="true" [disabled]="busy()">Agregar ajuste</app-button>
+      </form>
+    }
+  </section>
+
+  @if (confirm(); as c) {
+    <app-confirm-dialog title="Quitar del PIAR" [message]="c.text" confirmText="Quitar" variant="danger"
+                        (confirmed)="remove()" (cancelled)="confirm.set(null)" />
+  }
+}

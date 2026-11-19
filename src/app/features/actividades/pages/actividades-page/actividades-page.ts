@@ -1,5 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Row } from '../../../../core/models/row.model';
+import { Assignment } from '../../../../core/models/academic.model';
+import { asEntity } from '../../../../core/models/row.model';
+import { TableActionEvent } from '../../../../shared/components/data-table/data-table';
 import { AuthService } from '../../../../core/services/auth';
 import { PermissionsService } from '../../../../core/services/permissions';
 import { CrudManager } from '../../../../shared/components/crud-manager/crud-manager';
@@ -24,11 +26,11 @@ export class ActividadesPage {
   readonly isStudent = computed(() => this.auth.role() === 'STUDENT');
   // Calificar = permiso editar del módulo Entregas (tabla role_modules)
   readonly canGrade = computed(() => this.permissions.can('/academic/submissions', 'editar'));
-  readonly selected = signal<Row | null>(null);
+  readonly selected = signal<Assignment | null>(null);
 
-  onRowAction(event: { action: string; row: Row }): void {
+  onRowAction(event: TableActionEvent): void {
     if (event.action === 'submissions') {
-      this.selected.set(event.row);
+      this.selected.set(asEntity<Assignment>(event.row));
     }
   }
 

@@ -1,0 +1,75 @@
+@let v = view();
+@let c = chart();
+
+<figure class="dchart">
+  <figcaption>
+    <strong>{{ c.title }}</strong>
+    <small>{{ c.subtitle }}</small>
+  </figcaption>
+
+  @if (v.empty) {
+    <p class="dchart-empty">Sin datos para este filtro.</p>
+  } @else if (c.type === 'donut') {
+    <div class="donut">
+      <svg viewBox="0 0 220 240" role="img" [attr.aria-label]="c.title">
+        @for (s of v.slices; track s.label) {
+          <path [attr.d]="s.path" [attr.fill]="s.color"><title>{{ s.label }}: {{ s.value }} ({{ s.percent }})</title></path>
+        }
+        <text x="110" y="116" text-anchor="middle" class="donut-total">{{ v.total }}</text>
+        <text x="110" y="136" text-anchor="middle" class="donut-caption">total</text>
+      </svg>
+      <ul class="legend">
+        @for (s of v.slices; track s.label) {
+          <li>
+            <span class="swatch" [style.background]="s.color"></span>
+            <span class="legend-label">{{ s.label }}</span>
+            <span class="legend-value">{{ s.value }} · {{ s.percent }}</span>
+          </li>
+        }
+      </ul>
+    </div>
+  } @else {
+    <svg [attr.viewBox]="'0 0 ' + v.width + ' ' + v.height" role="img" [attr.aria-label]="c.title">
+
+      @if (c.type === 'hbar') {
+        @for (t of v.ticks; track t.pos) {
+          <line [attr.x1]="t.pos" [attr.x2]="t.pos" [attr.y1]="v.plot.top" [attr.y2]="v.plot.bottom" class="grid" />
+          <text [attr.x]="t.pos" [attr.y]="v.plot.bottom + 14" text-anchor="middle" class="tick">{{ t.text }}</text>
+        }
+        @for (b of v.bars; track b.fullLabel) {
+          <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h" [attr.fill]="b.color" rx="3">
+            <title>{{ b.fullLabel }}: {{ b.value }}</title>
+          </rect>
+          <text [attr.x]="b.labelX" [attr.y]="b.labelY" class="cat">{{ b.label }}</text>
+          <text [attr.x]="b.valueX" [attr.y]="b.valueY" class="val">{{ b.value }}</text>
+        }
+      } @else {
+        @for (t of v.ticks; track t.pos) {
+          <line [attr.x1]="v.plot.left" [attr.x2]="v.plot.right" [attr.y1]="t.pos" [attr.y2]="t.pos" class="grid" />
+          <text [attr.x]="v.plot.left - 6" [attr.y]="t.pos + 4" text-anchor="end" class="tick">{{ t.text }}</text>
+        }
+
+        @if (c.type === 'line') {
+          <path [attr.d]="v.linePath" class="line" />
+          @for (p of v.points; track p.label) {
+            <circle [attr.cx]="p.x" [attr.cy]="p.y" r="5" class="dot"><title>{{ p.label }}: {{ p.value }}</title></circle>
+            <text [attr.x]="p.x" [attr.y]="p.y - 10" text-anchor="middle" class="val">{{ p.value }}</text>
+            <text [attr.x]="p.x" [attr.y]="v.plot.bottom + 16" text-anchor="middle" class="cat">{{ p.label }}</text>
+          }
+        } @else {
+          @for (b of v.bars; track b.fullLabel) {
+            <rect [attr.x]="b.x" [attr.y]="b.y" [attr.width]="b.w" [attr.height]="b.h" [attr.fill]="b.color" rx="3">
+              <title>{{ b.fullLabel }}: {{ b.value }}</title>
+            </rect>
+            @if (!tilted()) {
+              <text [attr.x]="b.valueX" [attr.y]="b.valueY" text-anchor="middle" class="val">{{ b.value }}</text>
+              <text [attr.x]="b.labelX" [attr.y]="b.labelY + 4" text-anchor="middle" class="cat">{{ b.label }}</text>
+            } @else {
+              <text [attr.transform]="'translate(' + b.labelX + ',' + b.labelY + ') rotate(-40)'" text-anchor="end" class="cat">{{ b.label }}</text>
+            }
+          }
+        }
+      }
+    </svg>
+  }
+</figure>

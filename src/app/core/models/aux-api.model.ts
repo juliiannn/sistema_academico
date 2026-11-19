@@ -57,7 +57,7 @@ export interface SupportInput {
 }
 
 export interface PictogramSearch {
-  items: { arasaac_id: number; palabra: string; imagen_url: string }[];
+  items: Pictogram[];
   total: number;
   atribucion: string;
 }
@@ -72,4 +72,43 @@ export interface AuditLog {
   detalle: string | null;
   ip: string | null;
   creado: string;
+}
+
+/** Filtros de GET /supports. */
+export interface SupportFilters {
+  estudiante_email?: string;
+  tipo?: string;
+}
+
+/** Filtros + paginación de GET /supports. */
+export interface SupportQuery extends SupportFilters {
+  general?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+/** Filtros de GET /audit-logs. */
+export interface AuditLogFilters {
+  modulo?: string;
+  accion?: string;
+  usuario_email?: string;
+  limit?: number;
+}
+
+/** GET /audit-logs → data */
+export interface AuditLogPage {
+  items: AuditLog[];
+}
+
+/** POST /audit-logs: lo que se registra en la auditoría. */
+export interface AuditLogRequest {
+  accion: string;
+  modulo: string;
+  detalle: string;
+}
+
+/** Evento "mover paso" del formulario de apoyo visual. */
+export interface StepMove {
+  index: number;
+  direction: -1 | 1;
 }

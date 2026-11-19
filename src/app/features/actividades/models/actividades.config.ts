@@ -26,10 +26,5 @@ export const ACTIVIDADES_CONFIG: EntityConfig = {
     deactivateUrl: id => `/assignments/${id}/deactivate`
   },
   extraActions: [{ key: 'submissions', label: 'Ver respuestas', variant: 'primary' }],
-  filter: {
-    label: 'Buscar por curso y materia',
-    ref: 'courseSubjects',
-    allLabel: 'Todos los cursos y materias',
-    path: id => `/assignments/course-subject/${id}`
-  }
+  filters: [{ field: 'courseName', label: 'Curso', allLabel: 'Todos los cursos' }, { field: 'subjectName', label: 'Materia', allLabel: 'Todas las materias' }]
 };

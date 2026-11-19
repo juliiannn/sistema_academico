@@ -4,11 +4,13 @@ import { guideOf } from '../../../../core/models/disability-guide';
 import { Support } from '../../../../core/models/aux-api.model';
 import { ColumnDef } from '../../../../core/models/crud.model';
 import { enumLabel } from '../../../../core/models/enums';
-import { Row } from '../../../../core/models/row.model';
+import { Assignment } from '../../../../core/models/academic.model';
+import { Piar, PiarWithDisability } from '../../../../core/models/piar.model';
 import { AuxApiService } from '../../../../core/services/aux-api';
 import { API_ENDPOINTS } from '../../../../core/config';
 import { ApiService } from '../../../../core/services/api';
 import { errorMessage } from '../../../../core/utils/format';
+import { PiarPlan } from '../../../piar/components/piar-plan/piar-plan';
 import { withDisability } from '../../../../core/utils/piar';
 import { Alert } from '../../../../shared/components/alert/alert';
 import { Button } from '../../../../shared/components/button/button';
@@ -23,7 +25,7 @@ import { SupportCard } from '../../../../shared/components/support-card/support-
 // "Mi apoyo": lo que el estudiante necesita para realizar sus actividades según su PIAR
 @Component({
   selector: 'app-mi-apoyo-page',
-  imports: [Card, PageHeader, Button, Alert, ConnectionBanner, DataTable, DisabilityGuide, EmptyState, SupportCard],
+  imports: [PiarPlan, Card, PageHeader, Button, Alert, ConnectionBanner, DataTable, DisabilityGuide, EmptyState, SupportCard],
   templateUrl: './mi-apoyo-page.html'
 })
 export class MiApoyoPage implements OnInit {
@@ -33,14 +35,15 @@ export class MiApoyoPage implements OnInit {
   private router = inject(Router);
 
   readonly online = this.api.online;
-  readonly piar = signal<Row | null>(null);
-  readonly pending = signal<Row[]>([]);
+  readonly piar = signal<PiarWithDisability | null>(null);
+  readonly piarId = computed(() => this.piar()?.id ?? 0);
+  readonly pending = signal<Assignment[]>([]);
   readonly supports = signal<Support[]>([]);
   readonly error = signal('');
   readonly supportsError = signal('');
 
-  readonly title = computed(() => enumLabel('disability', this.piar()?.['disability']));
-  readonly guide = computed(() => guideOf(String(this.piar()?.['disability'] ?? 'OTHER')));
+  readonly title = computed(() => enumLabel('disability', this.piar()?.disability));
+  readonly guide = computed(() => guideOf(this.piar()?.disability ?? 'OTHER'));
 
   readonly columns: ColumnDef[] = [
     { key: 'title', label: 'Actividad' },
@@ -56,11 +59,11 @@ export class MiApoyoPage implements OnInit {
   private async init(): Promise<void> {
     try {
       // GET /piars/me devuelve los PIAR vigentes del estudiante (el más reciente primero)
-      const mine = ((await this.main.get(`${API_ENDPOINTS.piar}/me`)).data ?? []) as Row[];
+      const mine = (await this.main.get<Piar[]>(`${API_ENDPOINTS.piar}/me`)).data ?? [];
       this.piar.set(withDisability(mine)[0] ?? null);
       const today = new Date().toISOString().slice(0, 10);
-      const all = (await this.main.get('/assignments/me')).data as Row[];
-      this.pending.set((all ?? []).filter(a => String(a['dueDate']) >= today));
+      const all = (await this.main.get<Assignment[]>('/assignments/me')).data ?? [];
+      this.pending.set(all.filter(a => a.dueDate >= today));
     } catch (e) {
       this.error.set(errorMessage(e));
     }

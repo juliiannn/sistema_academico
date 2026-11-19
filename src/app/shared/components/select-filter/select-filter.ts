@@ -11,6 +11,7 @@ export class SelectFilter {
   readonly label = input.required<string>();
   readonly options = input<Option[]>([]);
   readonly allLabel = input('Todos');
+  readonly value = input('');
 
   readonly changed = output<string>();
 }

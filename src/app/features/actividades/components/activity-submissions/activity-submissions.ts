@@ -1,5 +1,5 @@
 import { Component, OnInit, inject, input, output, signal } from '@angular/core';
-import { Row } from '../../../../core/models/row.model';
+import { Submission, SubmissionGradeRequest } from '../../../../core/models/academic.model';
 import { API_ENDPOINTS } from '../../../../core/config';
 import { ApiService } from '../../../../core/services/api';
 import { ToastService } from '../../../../core/services/toast';
@@ -25,7 +25,7 @@ export class ActivitySubmissions implements OnInit {
   private api = inject(ApiService);
   private toast = inject(ToastService);
 
-  readonly items = signal<Row[]>([]);
+  readonly items = signal<Submission[]>([]);
   readonly error = signal('');
   readonly savingId = signal<number | null>(null);
 
@@ -35,11 +35,11 @@ export class ActivitySubmissions implements OnInit {
 
   private async load(): Promise<void> {
     try {
-      const all = ((await this.api.get(`${API_ENDPOINTS.submissions}/assignment/${this.assignmentId()}`)).data ?? []) as Row[];
+      const all = (await this.api.get<Submission[]>(`${API_ENDPOINTS.submissions}/assignment/${this.assignmentId()}`)).data ?? [];
       this.items.set(
         all
-          .filter(s => s['estado'] !== false)
-          .sort((a, b) => String(a['studentName']).localeCompare(String(b['studentName']), 'es'))
+          .filter(s => s.estado !== false)
+          .sort((a, b) => a.studentName.localeCompare(b.studentName, 'es'))
       );
       this.error.set('');
     } catch (e) {
@@ -47,11 +47,12 @@ export class ActivitySubmissions implements OnInit {
     }
   }
 
-  async grade(item: Row, value: GradeValue): Promise<void> {
-    this.savingId.set(item['id']);
+  async grade(item: Submission, value: GradeValue): Promise<void> {
+    this.savingId.set(item.id);
     try {
-      await this.api.put(`${API_ENDPOINTS.submissions}/${item['id']}/grade`, { nota: value.grade, retroalimentacion: value.feedback });
-      this.toast.show(`Nota enviada a ${item['studentName']}`);
+      const body: SubmissionGradeRequest = { nota: value.grade, retroalimentacion: value.feedback };
+      await this.api.put(`${API_ENDPOINTS.submissions}/${item.id}/grade`, body);
+      this.toast.show(`Nota enviada a ${item.studentName}`);
       await this.load();
       this.changed.emit();
     } catch (e) {

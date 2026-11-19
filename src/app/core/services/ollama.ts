@@ -7,6 +7,47 @@ export interface ChatTurn {
   content: string;
 }
 
+/** Opciones del modelo en POST /api/chat. */
+export interface OllamaOptions {
+  temperature: number;
+  num_ctx: number;
+}
+
+/** POST /api/chat → cuerpo */
+export interface OllamaChatRequest {
+  model: string;
+  messages: ChatTurn[];
+  stream: false;
+  options: OllamaOptions;
+  think?: boolean;
+}
+
+/** Mensaje que devuelve el modelo. */
+export interface OllamaMessage {
+  role: string;
+  content?: string;
+}
+
+/** POST /api/chat → respuesta */
+export interface OllamaChatResponse {
+  message?: OllamaMessage;
+}
+
+/** Un modelo instalado en Ollama. */
+export interface OllamaModel {
+  name: string;
+}
+
+/** GET /api/tags → modelos instalados */
+export interface OllamaTagsResponse {
+  models?: OllamaModel[];
+}
+
+/** Respuesta de error de Ollama. */
+export interface OllamaErrorResponse {
+  error?: string;
+}
+
 export interface OllamaStatus {
   ok: boolean;
   models: string[];
@@ -31,7 +72,7 @@ export class OllamaService {
       if (!response.ok) {
         return { ok: false, models: [], message: `Ollama respondió con error ${response.status}.` };
       }
-      const json = (await response.json()) as { models?: { name: string }[] };
+      const json = (await response.json()) as OllamaTagsResponse;
       const models = (json.models ?? []).map(m => m.name);
       return {
         ok: true,
@@ -57,7 +98,8 @@ export class OllamaService {
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model, messages, stream: false, options: { temperature: 0.2 } })
+          // Modelos que "razonan" (qwen3, deepseek-r1): sin modo de pensamiento para responder más rápido en el chat
+          body: JSON.stringify(this.chatRequest(model, messages))
         },
         OLLAMA_DEFAULTS.timeoutMs
       );
@@ -68,20 +110,35 @@ export class OllamaService {
     if (!response.ok) {
       let detail = '';
       try {
-        detail = ((await response.json()) as { error?: string }).error ?? '';
+        detail = ((await response.json()) as OllamaErrorResponse).error ?? '';
       } catch {
         detail = '';
       }
       throw new Error(`Ollama respondió con error ${response.status}${detail ? ': ' + detail : ''}`);
     }
 
-    const json = (await response.json()) as { message?: { content?: string } };
-    const text = json.message?.content?.trim();
+    const json = (await response.json()) as OllamaChatResponse;
+    // Por si el modelo devuelve su razonamiento entre <think>...</think>, se muestra solo la respuesta final
+    const text = json.message?.content?.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
 
     if (!text) {
       throw new Error('La IA local no devolvió texto.');
     }
     return text;
+  }
+
+  /** Cuerpo de POST /api/chat. */
+  private chatRequest(model: string, messages: ChatTurn[]): OllamaChatRequest {
+    const request: OllamaChatRequest = {
+      model, messages, stream: false,
+      // num_ctx: ventana de contexto suficiente para el resumen de todo el colegio (por defecto Ollama usa 2048-4096)
+      options: { temperature: 0.6, num_ctx: 12288 }
+    };
+    // Modelos que "razonan" (qwen3, deepseek-r1): sin modo de pensamiento para responder más rápido en el chat
+    if (/qwen3|deepseek-r1/i.test(model)) {
+      request.think = false;
+    }
+    return request;
   }
 
   private async fetchWithTimeout(url: string, init: RequestInit, ms: number): Promise<Response> {

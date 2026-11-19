@@ -1,9 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { AUX_API } from '../config';
 import { AuthService } from './auth';
-import {
-  ApiEnvelope, AuditLog, PictogramSearch, Support, SupportInput, SupportPage
-} from '../models/aux-api.model';
+import { ApiEnvelope, AuditLog, AuditLogFilters, AuditLogPage, AuditLogRequest, PictogramSearch, Support, SupportFilters, SupportInput, SupportPage, SupportQuery } from '../models/aux-api.model';
 
 export class AuxApiError extends Error {
   constructor(message: string, readonly status: number) {
@@ -53,7 +51,7 @@ export class AuxApiService {
     return this.call('GET', `/pictograms/search?q=${encodeURIComponent(q)}`);
   }
 
-  listSupports(params: { estudiante_email?: string; tipo?: string; general?: boolean; page?: number; limit?: number } = {}): Promise<SupportPage> {
+  listSupports(params: SupportQuery = {}): Promise<SupportPage> {
     const qs = new URLSearchParams();
     Object.entries(params).forEach(([k, v]) => {
       if (v !== undefined && v !== '' && v !== false) {
@@ -65,7 +63,7 @@ export class AuxApiService {
   }
 
   /** Recorre todas las páginas (la API limita a 100 por página). */
-  async listAllSupports(params: { estudiante_email?: string; tipo?: string } = {}): Promise<Support[]> {
+  async listAllSupports(params: SupportFilters = {}): Promise<Support[]> {
     const all: Support[] = [];
     for (let page = 1; page <= 50; page++) {
       const res = await this.listSupports({ ...params, page, limit: 100 });
@@ -97,21 +95,22 @@ export class AuxApiService {
     return this.call('PUT', `/supports/${id}/deactivate`, {});
   }
 
-  async listAuditLogs(params: { modulo?: string; accion?: string; usuario_email?: string; limit?: number } = {}): Promise<AuditLog[]> {
+  async listAuditLogs(params: AuditLogFilters = {}): Promise<AuditLog[]> {
     const qs = new URLSearchParams({ limit: String(params.limit ?? 100) });
     Object.entries(params).forEach(([k, v]) => {
       if (k !== 'limit' && v) {
         qs.set(k, String(v));
       }
     });
-    const res = await this.call<{ items: AuditLog[] }>('GET', `/audit-logs?${qs.toString()}`);
+    const res = await this.call<AuditLogPage>('GET', `/audit-logs?${qs.toString()}`);
     return res.items ?? [];
   }
 
   /** Registra una acción en la auditoría. Nunca lanza error: la auditoría no debe romper la pantalla. */
   async logAudit(accion: string, modulo: string, detalle: string): Promise<void> {
     try {
-      await this.call('POST', '/audit-logs', { accion, modulo, detalle });
+      const body: AuditLogRequest = { accion, modulo, detalle };
+      await this.call('POST', '/audit-logs', body);
     } catch {
       // sin API auxiliar no hay auditoría remota; se ignora
     }

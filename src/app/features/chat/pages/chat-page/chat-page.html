@@ -1,0 +1,199 @@
+<div class="chat" [class.show-chat]="mobileShowChat()">
+
+  <!-- ===================== Conversaciones ===================== -->
+  <aside class="side" aria-label="Conversaciones">
+    <div class="side-head">
+      <div class="me">
+        @if (me(); as m) {
+          <span class="avatar sm" [style.background]="avatarColor(m.id)">{{ initials(m.fullName) }}</span>
+        }
+        <div>
+          <strong>Mensajes</strong>
+          <span [class]="'conn ' + status()" role="status">
+            <span class="conn-dot" aria-hidden="true"></span>{{ statusText() }}
+            @if (status() === 'open' && socket.latencyMs() !== null) { <span class="muted"> · {{ socket.latencyMs() }} ms</span> }
+          </span>
+        </div>
+      </div>
+      <button type="button" class="icon-btn" [class.on]="showContacts()" (click)="showContacts.set(!showContacts())"
+        [attr.aria-pressed]="showContacts()" title="Nuevo chat privado">✎</button>
+    </div>
+
+    <div class="search">
+      <input type="search" [value]="search()" (input)="onSearch($any($event.target).value)"
+        [placeholder]="showContacts() ? 'Buscar persona…' : 'Buscar conversación o persona…'" aria-label="Buscar" />
+    </div>
+
+    @if (status() === 'unauthorized') {
+      <p class="side-alert">Tu sesión venció. Cierra sesión y vuelve a entrar para usar el chat.</p>
+    } @else if (status() === 'reconnecting') {
+      <p class="side-alert warn">Se perdió la conexión. Reintentando… <button type="button" class="link" (click)="socket.reconnect()">Reconectar ahora</button></p>
+    }
+
+    <div class="list">
+      @if (!showContacts()) {
+        @if (loadingList()) {
+          <p class="list-empty">Cargando conversaciones…</p>
+        } @else if (listError()) {
+          <p class="list-empty error">{{ listError() }} <button type="button" class="link" (click)="loadConversations(true)">Reintentar</button></p>
+        }
+        @for (c of filteredConversations(); track c.id) {
+          <button type="button" class="item" [class.active]="c.id === activeId()" (click)="select(c)">
+            @if (c.type === 'GENERAL') {
+              <span class="avatar room" aria-hidden="true">#</span>
+            } @else {
+              <span class="avatar" [style.background]="avatarColor(c.otherUser?.id ?? 0)">
+                {{ initials(c.name) }}
+                @if (isOnline(c.otherUser)) { <span class="dot" aria-label="en línea"></span> }
+              </span>
+            }
+            <span class="item-body">
+              <span class="item-top">
+                <span class="item-name">{{ c.name }}</span>
+                <span class="item-time">{{ listTime(c.lastMessage?.createdAt) }}</span>
+              </span>
+              <span class="item-sub">
+                @if (c.type === 'GENERAL') {
+                  <span class="tag">Sala · {{ socket.onlineIds().size }} en línea</span>
+                } @else {
+                  <span class="tag">{{ c.otherUser?.role }}</span>
+                }
+              </span>
+              <span class="item-bottom">
+                <span class="item-preview">{{ preview(c) }}</span>
+                @if (c.unread > 0) { <span class="badge-count">{{ c.unread > 99 ? '99+' : c.unread }}</span> }
+              </span>
+            </span>
+          </button>
+        }
+      }
+
+      @if (showContacts() || search().trim()) {
+        <div class="section-title">{{ showContacts() ? 'Iniciar chat privado' : 'Personas' }}</div>
+        @if (searchingContacts()) {
+          <p class="list-empty">Buscando…</p>
+        } @else if (!contacts().length) {
+          <p class="list-empty">No hay personas con ese nombre.</p>
+        }
+        @for (u of contacts(); track u.id) {
+          <button type="button" class="item contact" (click)="startDirect(u)">
+            <span class="avatar" [style.background]="avatarColor(u.id)">
+              {{ initials(u.fullName) }}
+              @if (isOnline(u)) { <span class="dot" aria-label="en línea"></span> }
+            </span>
+            <span class="item-body">
+              <span class="item-name">{{ u.fullName }}</span>
+              <span class="item-preview">{{ u.role }} · {{ isOnline(u) ? 'en línea' : 'desconectado' }}</span>
+            </span>
+          </button>
+        }
+      }
+    </div>
+  </aside>
+
+  <!-- ===================== Conversación ===================== -->
+  <section class="panel" aria-label="Conversación">
+    @if (active(); as conv) {
+      <header class="panel-head">
+        <button type="button" class="icon-btn back" (click)="backToList()" aria-label="Volver a las conversaciones">←</button>
+        @if (conv.type === 'GENERAL') {
+          <span class="avatar room" aria-hidden="true">#</span>
+        } @else {
+          <span class="avatar" [style.background]="avatarColor(conv.otherUser?.id ?? 0)">
+            {{ initials(conv.name) }}
+            @if (isOnline(conv.otherUser)) { <span class="dot"></span> }
+          </span>
+        }
+        <div class="panel-title">
+          <strong>{{ conv.name }}</strong>
+          <span class="sub" [class.typing]="!!typingText()" [class.online]="conv.type === 'DIRECT' && isOnline(conv.otherUser)">{{ headerSubtitle() }}</span>
+        </div>
+        @if (conv.type === 'GENERAL') {
+          <button type="button" class="online-stack" (click)="showOnline.set(!showOnline())" [attr.aria-expanded]="showOnline()"
+            title="Ver quién está conectado">
+            @for (u of onlineUsers().slice(0, 5); track u.id) {
+              <span class="avatar xs" [style.background]="avatarColor(u.id)">{{ initials(u.fullName) }}</span>
+            }
+            @if (onlineUsers().length > 5) { <span class="more">+{{ onlineUsers().length - 5 }}</span> }
+          </button>
+        }
+      </header>
+
+      @if (showOnline() && conv.type === 'GENERAL') {
+        <div class="online-panel">
+          <strong>Conectados ahora ({{ onlineUsers().length }})</strong>
+          <div class="online-list">
+            @for (u of onlineUsers(); track u.id) {
+              <button type="button" class="chip" [disabled]="u.id === me()?.id" (click)="startDirect(u)"
+                [title]="u.id === me()?.id ? 'Eres tú' : 'Escribirle en privado'">
+                <span class="dot static"></span>{{ u.fullName }}@if (u.id === me()?.id) { (tú) } · <span class="muted">{{ u.role }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      <div class="messages" #scroller (scroll)="onScroll()" aria-live="polite">
+        @if (hasMore()) {
+          <button type="button" class="older" [disabled]="loadingMessages()" (click)="loadOlder()">
+            {{ loadingMessages() ? 'Cargando…' : 'Ver mensajes anteriores' }}
+          </button>
+        }
+        @if (loadingMessages() && !bubbles().length) {
+          <p class="empty-chat">Cargando mensajes…</p>
+        } @else if (!bubbles().length) {
+          <div class="empty-chat">
+            <span class="big" aria-hidden="true">💬</span>
+            <p>{{ conv.type === 'GENERAL' ? 'Escribe el primer mensaje para todos los conectados.' : 'Escríbele a ' + conv.name + '.' }}</p>
+          </div>
+        }
+
+        @for (group of groups(); track group.label) {
+          <div class="day"><span>{{ group.label }}</span></div>
+          @for (b of group.bubbles; track b.key; let i = $index) {
+            <div class="row" [class.mine]="b.mine">
+              @if (!b.mine) {
+                <span class="avatar xs" [style.background]="avatarColor(b.message.sender.id)"
+                  [style.visibility]="showSender(group, i) || conv.type === 'DIRECT' ? 'visible' : 'hidden'">{{ initials(b.message.sender.fullName) }}</span>
+              }
+              <div class="bubble-wrap">
+                @if (showSender(group, i)) {
+                  <span class="sender">{{ b.message.sender.fullName }} <span class="role">· {{ b.message.sender.role }}</span></span>
+                }
+                <div class="bubble" [class.pending]="b.pending" [class.failed]="b.failed">{{ b.message.content }}</div>
+                <span class="meta">
+                  {{ time(b.message.createdAt) }}
+                  @if (b.mine) {
+                    @if (b.pending) { · enviando… }
+                    @else if (b.failed) { · <span class="err">{{ b.error }}</span> <button type="button" class="link" (click)="retry(b)">Reintentar</button> }
+                    @else if (seen(b)) { · <span class="seen">Visto ✓✓</span> }
+                    @else { · ✓ }
+                  }
+                </span>
+              </div>
+            </div>
+          }
+        }
+
+        @for (n of notices(); track n.key) {
+          @if (conv.type === 'GENERAL') { <div class="notice">{{ n.text }}</div> }
+        }
+      </div>
+
+      <form class="composer" (submit)="$event.preventDefault(); send()">
+        <textarea #composer rows="1" [value]="draft()" (input)="onInput($any($event.target).value)" (keydown)="onKeydown($event)"
+          [placeholder]="socket.connected() ? 'Escribe un mensaje…' : 'Esperando conexión…'"
+          [attr.maxlength]="maxLength" aria-label="Mensaje" title="Enter para enviar · Shift+Enter para salto de línea"></textarea>
+        @if (draft().length > maxLength - 200) {
+          <span class="counter" [class.over]="draft().length > maxLength">{{ draft().length }}/{{ maxLength }}</span>
+        }
+        <button type="submit" class="send" [disabled]="!canSend()" aria-label="Enviar mensaje" title="Enviar">➤</button>
+      </form>
+    } @else {
+      <div class="no-conv">
+        <span class="big" aria-hidden="true">💬</span>
+        <p>Elige una conversación para empezar.</p>
+      </div>
+    }
+  </section>
+</div>

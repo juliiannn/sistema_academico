@@ -56,7 +56,8 @@ export class SelfView implements OnInit {
 
     try {
 
-      const data = (await this.api.get(this.config().endpoint)).data;
+      // Pantalla genérica: según el endpoint llega una lista (Mis notas) o un solo registro (Mi perfil)
+      const data = (await this.api.get<Row[] | Row>(this.config().endpoint)).data;
 
       if (Array.isArray(data)) {
         this.rows.set(data);
